@@ -1,0 +1,14 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    app:actionViewClass="android.support.v7.widget.SearchView"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+
+    <item
+        android:id="@+id/myButton"
+        android:title=""
+        app:showAsAction="collapseActionView|ifRoom"
+        android:icon="@drawable/lupe"
+        android:iconifiedByDefault="false"
+        app:actionViewClass="android.widget.SearchView" />
+
+</menu>

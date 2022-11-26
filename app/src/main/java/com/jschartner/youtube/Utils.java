@@ -8,14 +8,13 @@ import android.widget.Toast;
 import com.google.android.exoplayer2.source.MediaSource;
 
 public class Utils {
-    private static MediaSource mediaSource;
+    private static JexoPlayer jexoPlayer = null;
 
-    public static void setMediaSource(MediaSource _mediaSource) {
-        mediaSource = _mediaSource;
-    }
-
-    public static MediaSource getMediaSource() {
-        return mediaSource;
+    public static JexoPlayer getJexoPlayer(Context context) {
+	if(jexoPlayer == null) {
+	    jexoPlayer = new JexoPlayer(context);
+	}
+	return jexoPlayer;
     }
 
     public static void toast(Context context, String message) {

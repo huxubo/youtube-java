@@ -23,13 +23,14 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
+import com.google.android.exoplayer2.Player;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.InputStream;
 
 public class MainActivity extends AppCompatActivity {
-
     private JexoPlayer jexoPlayer;
     private JexoPlayerView jexoplayerView;
 
@@ -133,14 +134,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void startPlayer() {
-        Utils.setMediaSource(jexoPlayer.getMediaSource());
-
         Intent intent = new Intent(getApplicationContext(), PlayerActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        Bundle b = new Bundle();
-        b.putString("id", "yooy");
-        intent.putExtras(b);
         startActivity(intent);
+    }
+
+    @Override
+    public void onResume() {
+	super.onResume();
+	jexoPlayer = Utils.getJexoPlayer(this);
+	jexoplayerView.setPlayer(jexoPlayer);
+	jexoplayerView.setVisibility(jexoPlayer.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    @Override
+    public void onPause() {
+	super.onPause();
+	jexoplayerView.setPlayer((Player) null);
     }
 
     @Override
@@ -167,31 +177,37 @@ public class MainActivity extends AppCompatActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 final String videoId = resultAdapter.getItem(position).optString("videoId");
                 jexoPlayer.playFirst(Youtube.allSources(videoId));
-                //jexoplayerView.setInfo(Youtube.getInfo(videoId));
+		startPlayer();
             }
         });
 
         resultAdapter.refresh((JSONArray) history.searchLoop(null));
 
         //SEARCH
-
-        jexoPlayer = new JexoPlayer(this);
-        jexoplayerView = findViewById(R.id.playerView);
+	jexoplayerView = findViewById(R.id.playerView);
+	jexoPlayer = Utils.getJexoPlayer(this);
         jexoplayerView.setPlayer(jexoPlayer);
 
-        jexoplayerView.setOnClickListener(new View.OnClickListener(){
-            @Override
-            public void onClick(View v) {
-                jexoplayerView.removeOnClickListener();
-                startPlayer();
-                //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-                //jexoplayerView.setLayoutParams(new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-            }
-        });
+	jexoplayerView.setOnClickListener(new View.OnClickListener(){
+		@Override
+		public void onClick(View v) {
+		    startPlayer();
+		}
+	    });
+	
+	jexoplayerView.setOnTouchListener(new OnSwipeTouchListener(this){
+		@Override
+		public void onSwipeTop() {
+		    //add new activity
+		    startPlayer();
+		}
 
-        //rTQJiDqfBhM - LUCIANO - MEER - Links
-        //jfKfPfyJRdk - Lo Fi - M3u8
-        //6xThzxLKlj0 - Der zweite 12 Stunden Stream - Dash
+		@Override
+		public void onSwipeLeft() {
+		    jexoPlayer.stop();
+		    jexoplayerView.setVisibility(jexoPlayer.isEmpty() ? View.GONE : View.VISIBLE);
+		}
+	    });
     }
 
     @Override

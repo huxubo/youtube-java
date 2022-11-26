@@ -1,5 +1,7 @@
 package com.jschartner.youtube;
 
+import java.util.Arrays;
+
 import android.content.Context;
 import android.net.Uri;
 
@@ -42,8 +44,7 @@ public class JexoPlayer {
     private final Context context;
     private TrackSelectionParameters trackSelectionParameters;
     private boolean videoAutoSelection;
-
-    private MediaSource mediaSource;
+    private boolean empty;
 
     private static HlsMediaSource.Factory hlsMediaSourceFactory;
     private static DashMediaSource.Factory dashMediaSourceFactory;
@@ -137,11 +138,7 @@ public class JexoPlayer {
         this.player.setTrackSelectionParameters(trackSelectionParameters);
         this.player.setAudioAttributes(AudioAttributes.DEFAULT, true);
         this.videoAutoSelection = true;
-        this.mediaSource = null;
-    }
-
-    public MediaSource getMediaSource() {
-        return mediaSource;
+	this.empty = true;
     }
 
     public JexoFormat getVideoFormats() {
@@ -173,10 +170,10 @@ public class JexoPlayer {
 
     public void playMediaSource(MediaSource source) {
         if (source == null) return;
-        mediaSource = source;
         player.setMediaSource(source);
         player.setPlayWhenReady(true);
         player.prepare();
+	empty = false;
     }
 
     private boolean playLinkWithFactory(String link, MediaSource.Factory factory) {
@@ -228,6 +225,23 @@ public class JexoPlayer {
         if (data != null && data.contains(".m3u8") && playM3u8(data)) return true;
         if (playDash(data)) return true;
         return false;
+    }
+
+    public boolean stop() {
+	try{
+	    player.setPlayWhenReady(false);
+	    player.stop();
+	    player.seekTo(0);
+	    empty = true;
+	    return true;
+	}
+	catch(Exception e) {
+	    return false;
+	}
+    }
+
+    public boolean isEmpty() {
+	return empty;
     }
 
     public Player getPlayer() {

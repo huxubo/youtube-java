@@ -12,10 +12,17 @@ import android.widget.ImageView;
 import android.widget.PopupWindow;
 import android.widget.TextView;
 
+import android.view.GestureDetector;
+import android.view.GestureDetector.SimpleOnGestureListener;
+import com.google.android.exoplayer2.ui.StyledPlayerView.ControllerVisibilityListener;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import android.view.MotionEvent;
+import android.view.View;
 
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.ui.StyledPlayerView;
@@ -31,6 +38,7 @@ public class JexoPlayerView extends StyledPlayerView {
 
     private TextView titleView;
     private TextView authorView;
+    private ImageButton backButton;
 
     private RecyclerView settingsView;
     private PopupWindow settingsWindow;
@@ -68,11 +76,6 @@ public class JexoPlayerView extends StyledPlayerView {
         if(onClickListener!=null) onClickListener.onClick(this);
         else return super.performClick();
         return true;
-    }
-
-    @Override
-    public void setOnTouchListener(View.OnTouchListener onTouchListener) {
-        super.setOnTouchListener(new DraggableOnTouchListener(onTouchListener));
     }
 
     private void updateSelectedVideoFormat() {
@@ -298,9 +301,8 @@ public class JexoPlayerView extends StyledPlayerView {
             authorView.setText(author == null ? "" : author);
         }
     }
-
+    
     private void init() {
-        super.setOnTouchListener(new DraggableOnTouchListener());
         setShowNextButton(false);
         setShowPreviousButton(false);
         setShowShuffleButton(false);
@@ -309,9 +311,16 @@ public class JexoPlayerView extends StyledPlayerView {
 
         titleView = findViewById(R.id.titleView);
         authorView = findViewById(R.id.authorView);
+	backButton = findViewById(R.id.backButton);
+
+	setControllerVisibilityListener(new StyledPlayerView.ControllerVisibilityListener(){
+		@Override
+		public void onVisibilityChanged(int v) {
+		    
+		}
+	    });
 
         ImageButton button = findViewById(R.id.exo_custom_button);
-        //button.setOnClickListener(new OnClickOnButtonClickListener());
 
         Resources resources = getContext().getResources();
 

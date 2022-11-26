@@ -9,6 +9,7 @@
     <com.jschartner.youtube.JexoPlayerView android:id="@+id/player_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+	app:shutter_background_color="@android:color/transparent"
         app:show_shuffle_button="true"
         app:show_subtitle_button="true"/>
 </FrameLayout>

@@ -2,20 +2,37 @@ package com.jschartner.youtube;
 
 import android.os.Bundle;
 
+import android.content.Intent;
 import androidx.appcompat.app.AppCompatActivity;
-import com.google.android.exoplayer2.Player;
-
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
+
+import com.google.android.exoplayer2.Player;
+import org.json.JSONObject;
 
 //cd E:\Documents\tu\android\ExoPlayer3 && gradlew installDebug && adb shell monkey -p com.example.exoplayer 1
 public class PlayerActivity extends AppCompatActivity {
 
+    private JexoPlayer jexoPlayer;
     private JexoPlayerView jexoPlayerView;
+    private static JSONObject videoInfo;
 
     @Override
     public void onResume() {
 	super.onResume();
-	jexoPlayerView.setPlayer(Utils.getJexoPlayer(this));
+	jexoPlayer = Utils.getJexoPlayer(this);
+	jexoPlayerView.setPlayer(jexoPlayer);
+	Intent intent = getIntent();
+	if(intent != null) {
+	    String id = intent.getStringExtra("id");
+	    if(id != null) {
+		videoInfo = Youtube.getInfo(id);
+	    }
+	}
+        if(videoInfo != null) {
+	    jexoPlayerView.setInfo(videoInfo);
+	}
 	hideSystemBars();
     }
 
@@ -43,11 +60,25 @@ public class PlayerActivity extends AppCompatActivity {
         super.onCreate(savedInstance);
         setContentView(R.layout.activity_player);
 
+	PlayerActivity playerActivity = this;
+
         jexoPlayerView = findViewById(R.id.player_view);
 	jexoPlayerView.setOnTouchListener(new OnSwipeTouchListener(this){
 		@Override
 		public void onSwipeBottom() {
 		    onBackPressed();
+		}
+
+		@Override
+		public void onDoubleClick() {
+		    if(jexoPlayer != null) jexoPlayer.seekTo(1500);
+		}
+	    });
+	
+	jexoPlayerView.setOnBackPressedListener(new JexoPlayerView.OnBackPressedListener(){
+		@Override
+		public void onBackPressed() {
+		    playerActivity.onBackPressed();
 		}
 	    });
     }

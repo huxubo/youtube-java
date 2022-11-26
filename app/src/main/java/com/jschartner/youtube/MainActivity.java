@@ -1,5 +1,8 @@
 package com.jschartner.youtube;
 
+import android.os.Handler;
+import android.os.Looper;
+import android.view.MotionEvent;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -39,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
 
     private SwipeRefreshLayout swipeLayout;
     private History history;
+
+    private boolean doubleBackToExitIsPressedOnce = false;
 
     private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
         private ImageView imageView;
@@ -93,8 +98,8 @@ public class MainActivity extends AppCompatActivity {
 
             JSONObject json = getItem(position);
             String finalText = json.optJSONObject("title")
-                    .optJSONArray("runs")
-                    .optJSONObject(0).optString("text");
+		.optJSONArray("runs")
+		.optJSONObject(0).optString("text");
 
             textView.setText(finalText);
 
@@ -117,15 +122,15 @@ public class MainActivity extends AppCompatActivity {
             tasks = new DownloadImageTask[result.length()];
             for(int i=0;i<result.length();i++) {
                 JSONObject json = result.optJSONObject(i);
-               insert(json, getCount());
-               JSONArray thumbnails = json.optJSONObject("thumbnail")
-                        .optJSONArray("thumbnails");
+		insert(json, getCount());
+		JSONArray thumbnails = json.optJSONObject("thumbnail")
+		    .optJSONArray("thumbnails");
 
                 JSONObject thumbnail = thumbnails.optJSONObject(thumbnails.length() - 1);
                 String url = thumbnail.optString("url");
 
-               tasks[i] = new DownloadImageTask(bitmaps, i);
-               tasks[i].execute(url);
+		tasks[i] = new DownloadImageTask(bitmaps, i);
+		tasks[i].execute(url);
             }
 
             notifyDataSetChanged();
@@ -137,6 +142,13 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(getApplicationContext(), PlayerActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
+    }
+
+    public void startPlayer(String id) {
+        Intent intent = new Intent(getApplicationContext(), PlayerActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+	intent.putExtra("id", id);
+	startActivity(intent);
     }
 
     @Override
@@ -162,24 +174,24 @@ public class MainActivity extends AppCompatActivity {
 
         swipeLayout = findViewById(R.id.swipeLayout);
         swipeLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-            @Override
-            public void onRefresh() {
-                resultAdapter.refresh((JSONArray) history.refreshLoop());
-                swipeLayout.setRefreshing(false);
-            }
-        });
+		@Override
+		public void onRefresh() {
+		    resultAdapter.refresh((JSONArray) history.refreshLoop());
+		    swipeLayout.setRefreshing(false);
+		}
+	    });
 
         resultAdapter = new ResultAdapter(this, R.layout.list_item);
         listView = findViewById(R.id.listView);
         listView.setAdapter(resultAdapter);
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                final String videoId = resultAdapter.getItem(position).optString("videoId");
-                jexoPlayer.playFirst(Youtube.allSources(videoId));
-		startPlayer();
-            }
-        });
+		@Override
+		public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+		    final String videoId = resultAdapter.getItem(position).optString("videoId");
+		    jexoPlayer.playFirst(Youtube.allSources(videoId));
+		    startPlayer(videoId);
+		}
+	    });
 
         resultAdapter.refresh((JSONArray) history.searchLoop(null));
 
@@ -193,9 +205,11 @@ public class MainActivity extends AppCompatActivity {
 		public void onClick(View v) {
 		    startPlayer();
 		}
-	    });
-	
-	jexoplayerView.setOnTouchListener(new OnSwipeTouchListener(this){
+	    });	
+
+
+
+	jexoplayerView.setOnTouchListener(new OnSwipeTouchListener(this) {
 		@Override
 		public void onSwipeTop() {
 		    //add new activity
@@ -213,8 +227,22 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         Object result = history.back();
-        if(result == null) super.onBackPressed();
-        else resultAdapter.refresh((JSONArray) result);
+        if(result != null) {
+	    resultAdapter.refresh((JSONArray) result);
+	    return;
+	}
+	if (doubleBackToExitIsPressedOnce) {
+            super.onBackPressed();
+	    jexoPlayer.stop();
+            finish();
+            return;
+        }
+
+        doubleBackToExitIsPressedOnce = true;
+        new Handler(Looper.getMainLooper())
+	    .postDelayed(() -> {
+                    doubleBackToExitIsPressedOnce = false;
+	    }, 2000);
     }
 
     @Override
@@ -229,24 +257,24 @@ public class MainActivity extends AppCompatActivity {
         searchView.setFocusable(true);
 
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override
-            public boolean onQueryTextSubmit(String query) {
-                searchView.setQuery("", false);
-                searchView.clearFocus();
-                menuSearch.collapseActionView();
+		@Override
+		public boolean onQueryTextSubmit(String query) {
+		    searchView.setQuery("", false);
+		    searchView.clearFocus();
+		    menuSearch.collapseActionView();
 
-                swipeLayout.requestFocus();
+		    swipeLayout.requestFocus();
 
-                resultAdapter.refresh((JSONArray) history.searchLoop(query));
+		    resultAdapter.refresh((JSONArray) history.searchLoop(query));
 
-                return true;
-            }
+		    return true;
+		}
 
-            @Override
-            public boolean onQueryTextChange(String newText) {
-                return false;
-            }
-        });
+		@Override
+		public boolean onQueryTextChange(String newText) {
+		    return false;
+		}
+	    });
 
         return super.onCreateOptionsMenu(menu);
     }

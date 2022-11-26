@@ -10,6 +10,9 @@ import android.view.View.OnTouchListener;
 public class OnSwipeTouchListener implements OnTouchListener {
 
     private final GestureDetector gestureDetector;
+    private static final long DOUBLE_CLICK_DELTA_TIME = 300;// ms
+
+    private long lastClickTime = 0;
 
     public OnSwipeTouchListener (Context ctx){
         gestureDetector = new GestureDetector(ctx, new GestureListener());
@@ -25,7 +28,17 @@ public class OnSwipeTouchListener implements OnTouchListener {
 	if(event.getAction() == MotionEvent.ACTION_MOVE) {
 	    return false;
 	}
-	if(!result) v.performClick();
+	if(!result) {
+	    long clickTime = System.currentTimeMillis();
+	    if(clickTime - lastClickTime < DOUBLE_CLICK_DELTA_TIME) {
+		onDoubleClick();
+		lastClickTime = 0;
+	    }
+	    else {
+		v.performClick();
+	    }
+	    lastClickTime = clickTime;
+	}
         return result;
     }
 
@@ -68,6 +81,9 @@ public class OnSwipeTouchListener implements OnTouchListener {
             }
             return result;
         }
+    }
+
+    public void onDoubleClick() {	
     }
     
     public void onSwipeRight() {

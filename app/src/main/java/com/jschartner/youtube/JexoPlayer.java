@@ -227,6 +227,10 @@ public class JexoPlayer {
         return false;
     }
 
+    public void seekTo(long ms) {
+        if(player!=null) player.seekTo(player.getCurrentPosition() + ms);
+    }
+
     public boolean stop() {
 	try{
 	    player.setPlayWhenReady(false);

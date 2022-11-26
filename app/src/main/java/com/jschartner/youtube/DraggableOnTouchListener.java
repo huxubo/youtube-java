@@ -21,33 +21,33 @@ public class DraggableOnTouchListener implements View.OnTouchListener {
     @Override
     public boolean onTouch(View v, MotionEvent event) {
         switch (event.getActionMasked()) {
-            case MotionEvent.ACTION_DOWN:
-                dX = v.getX() - event.getRawX();
-                dY = v.getY() - event.getRawY();
-                lastAction = MotionEvent.ACTION_DOWN;
-                break;
+	case MotionEvent.ACTION_DOWN:
+	    dX = v.getX() - event.getRawX();
+	    dY = v.getY() - event.getRawY();
+	    lastAction = MotionEvent.ACTION_DOWN;
+	    break;
 
-            case MotionEvent.ACTION_MOVE:
-                v.setY(event.getRawY() + dY);
-                v.setX(event.getRawX() + dX);
-                lastAction = MotionEvent.ACTION_MOVE;
-                break;
+	case MotionEvent.ACTION_MOVE:
+	    v.setY(event.getRawY() + dY);
+	    v.setX(event.getRawX() + dX);
+	    lastAction = MotionEvent.ACTION_MOVE;
+	    break;
 
-            case MotionEvent.ACTION_UP:
-                //ON CLICK
-                if (lastAction == MotionEvent.ACTION_DOWN) {
-                    if(onTouchListener != null) {
-                        return onTouchListener.onTouch(v, event);
-                    }
-                }
-                //ON STOP DRAG
-                else {
-                }
+	case MotionEvent.ACTION_UP:
+	    //ON CLICK
+	    if (lastAction == MotionEvent.ACTION_DOWN) {
+		if(onTouchListener != null) {
+		    return onTouchListener.onTouch(v, event);
+		}
+	    }
+	    //ON STOP DRAG
+	    else {
+	    }
 
-                break;
+	    break;
 
-            default:
-                return false;
+	default:
+	    return false;
         }
 
         return false;

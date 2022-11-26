@@ -1,5 +1,7 @@
 package com.jschartner.youtube;
 
+import android.widget.LinearLayout;
+import android.graphics.Color;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
@@ -39,13 +41,14 @@ public class JexoPlayerView extends StyledPlayerView {
     private TextView titleView;
     private TextView authorView;
     private ImageButton backButton;
+    private LinearLayout upperLayout;
 
     private RecyclerView settingsView;
     private PopupWindow settingsWindow;
     private SettingsAdapter settingsAdapter;
     private int settingsWindowMargin;
 
-    private int selectedMainSettingsPosition;
+    private int selectedMainSettingsPosition = -1;
 
     private SubSettingsAdapter subSettingsAdapter;
 
@@ -54,13 +57,21 @@ public class JexoPlayerView extends StyledPlayerView {
     private int selectedPlaybackSpeedIndex;
 
     private JexoFormat videoFormats;
+    private View.OnClickListener onClickListener;
+    private OnBackPressedListener onBackPressedListener;
+
+    interface OnBackPressedListener {
+	void onBackPressed();
+    }
 
     public void setPlayer(JexoPlayer jexoPlayer) {
         super.setPlayer(jexoPlayer.getPlayer());
         this.jexoPlayer = jexoPlayer;
     }
 
-    private View.OnClickListener onClickListener;
+    public void setOnBackPressedListener(OnBackPressedListener onBackPressedListener) {
+	this.onBackPressedListener = onBackPressedListener;
+    }
 
     @Override
     public void setOnClickListener(View.OnClickListener onClickListener) {
@@ -132,7 +143,6 @@ public class JexoPlayerView extends StyledPlayerView {
         settingsView.setAdapter(adapter);
 
         updateSettingsWindowSize();
-
         settingsWindow.dismiss();
 
         int xoff = getWidth() - settingsWindow.getWidth() - settingsWindowMargin;
@@ -170,7 +180,8 @@ public class JexoPlayerView extends StyledPlayerView {
             subSettingsAdapter.init(playbackSpeedTexts, selectedPlaybackSpeedIndex);
             displaySettingsWindow(subSettingsAdapter);
         } else {
-            settingsWindow.dismiss();
+	    settingsWindow.dismiss();
+	    selectedMainSettingsPosition = -1;
         }
     }
 
@@ -312,11 +323,21 @@ public class JexoPlayerView extends StyledPlayerView {
         titleView = findViewById(R.id.titleView);
         authorView = findViewById(R.id.authorView);
 	backButton = findViewById(R.id.backButton);
+	upperLayout = findViewById(R.id.upperLayout);
+	backButton.setColorFilter(0xffffffff);
+
+	backButton.setOnClickListener(new View.OnClickListener(){
+		@Override
+		public void onClick(View v) {
+		    if(onBackPressedListener != null) {
+			onBackPressedListener.onBackPressed();
+		    }
+		}
+	    });
 
 	setControllerVisibilityListener(new StyledPlayerView.ControllerVisibilityListener(){
 		@Override
 		public void onVisibilityChanged(int v) {
-		    
 		}
 	    });
 

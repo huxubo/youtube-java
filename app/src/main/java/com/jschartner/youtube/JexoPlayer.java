@@ -1,7 +1,5 @@
 package com.jschartner.youtube;
 
-import java.util.Arrays;
-
 import android.content.Context;
 import android.net.Uri;
 
@@ -150,7 +148,7 @@ public class JexoPlayer {
         for (int i = 0; i < trackGroups.size(); i++) {
             Tracks.Group trackGroup = trackGroups.get(i);
             if (trackGroup.getMediaTrackGroup().type == C.TRACK_TYPE_VIDEO) {
-                return new JexoFormat(context, trackGroup, videoAutoSelection);
+                return new JexoFormat(trackGroup, videoAutoSelection);
             }
         }
         return null;

@@ -1,12 +1,8 @@
 package com.jschartner.youtube;
 
-import android.content.Context;
-
 import com.google.android.exoplayer2.Format;
 import com.google.android.exoplayer2.Tracks;
 import com.google.android.exoplayer2.source.TrackGroup;
-import com.google.android.exoplayer2.ui.DefaultTrackNameProvider;
-import com.google.android.exoplayer2.ui.TrackNameProvider;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -23,15 +19,6 @@ class JexoFormat {
     private int selected;
     private TrackGroup trackGroup;
     private String selectedLabel;
-
-    private static TrackNameProvider trackNameProvider;
-
-    private static TrackNameProvider getTrackNameProvider(Context context) {
-        if (trackNameProvider == null) {
-            trackNameProvider = new DefaultTrackNameProvider(context.getResources());
-        }
-        return trackNameProvider;
-    }
 
     public String getSelectedLabel() {
         return selected == 0
@@ -62,7 +49,7 @@ class JexoFormat {
     private String map(int width) {
         switch (width) {
             case 256:
-                return "140p";
+                return "144p";
             case 426:
                 return "240p";
             case 640:
@@ -82,7 +69,7 @@ class JexoFormat {
         }
     }
 
-    public JexoFormat(Context context, Tracks.Group tracksGroup, boolean auto) {
+    public JexoFormat(Tracks.Group tracksGroup, boolean auto) {
         trackGroup = tracksGroup.getMediaTrackGroup();
 
         Map<Integer, List<Integer>> formats = new HashMap<>();

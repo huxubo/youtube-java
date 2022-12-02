@@ -1,7 +1,5 @@
 package com.jschartner.youtube;
 
-import android.util.Pair;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -172,33 +170,36 @@ public class Youtube {
         JSONArray results = new JSONArray();
 
         try {
-            JSONArray contents = ytInitialData
-                    .getJSONObject("contents")
-                    .getJSONObject("twoColumnSearchResultsRenderer")
-                    .getJSONObject("primaryContents")
-                    .getJSONObject("sectionListRenderer")
-                    .getJSONArray("contents")
-                    .getJSONObject(0)
-                    .getJSONObject("itemSectionRenderer")
-                    .getJSONArray("contents");
+	    JSONArray _contents = ytInitialData
+		.getJSONObject("contents")
+		.getJSONObject("twoColumnSearchResultsRenderer")
+		.getJSONObject("primaryContents")
+		.getJSONObject("sectionListRenderer")
+		.getJSONArray("contents");
 
-            for (int i = 0; i < contents.length(); i++) {
-                JSONObject result = contents.getJSONObject(i);
-                if (result.has("videoRenderer")) {
-                    results.put(result.getJSONObject("videoRenderer"));
-                } else if (result.has("shelfRenderer")) {
-                    JSONArray shelfs = result.getJSONObject("shelfRenderer")
-                            .getJSONObject("content")
-                            .getJSONObject("verticalListRenderer")
-                            .getJSONArray("items");
+	    for(int j=0;j<_contents.length();j++) {
+		if(!_contents.getJSONObject(j).has("itemSectionRenderer")) continue;
+		JSONArray contents = _contents.getJSONObject(j)
+		    .getJSONObject("itemSectionRenderer")
+		    .getJSONArray("contents");
+		for (int i = 0; i < contents.length(); i++) {
+		    JSONObject result = contents.getJSONObject(i);
+		    if (result.has("videoRenderer")) {
+			results.put(result.getJSONObject("videoRenderer"));
+		    } else if (result.has("shelfRenderer")) {
+			JSONArray shelfs = result.getJSONObject("shelfRenderer")
+			    .getJSONObject("content")
+			    .getJSONObject("verticalListRenderer")
+			    .getJSONArray("items");
 
-                    for (int j = 0; j < shelfs.length(); j++) {
-                        results.put(shelfs.getJSONObject(j).getJSONObject("videoRenderer"));
-                    }
-                }
-            }
-
-            setBadges(results);
+			for (int k = 0; k < shelfs.length(); k++) {
+			    results.put(shelfs.getJSONObject(k).getJSONObject("videoRenderer"));
+			}
+		    }
+		}
+	    }
+	    
+	    setBadges(results);
         } catch (JSONException e) {
             e.printStackTrace();
             return null;
@@ -294,6 +295,16 @@ public class Youtube {
             map.put(name, value);
         }
         return map;
+    }
+
+    static class Pair<T, V> {
+	final T first;
+	final V second;
+
+	public Pair(T first, V second) {
+	    this.first = first;
+	    this.second = second;
+	}
     }
 
     private static Pair<JSONObject, String> getInitialPlayerResponse(final String id) {
@@ -416,11 +427,16 @@ public class Youtube {
 
             String signatureCipher = format.optString("signatureCipher");
             String url;
+
+	    url = decoder.apply(signatureCipher);
+
+	    /*
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
                 url = decoder.apply(signatureCipher);
             } else {
                 return false;
             }
+	    */
             format.put("url", url);
         }
 
@@ -428,8 +444,7 @@ public class Youtube {
     }
 
     private static void buildVideo(final StringBuilder builder, final JSONObject format) throws JSONException {
-        if (format.has("audioSampleRate")) return;
-        if (!format.has("width")) return;
+	if(!isVideoFormat(format)) return;
 
         String _mime = format.getString("mimeType");
         String[] parts = _mime.split(";");
@@ -488,8 +503,7 @@ public class Youtube {
     }
 
     private static void buildAudio(StringBuilder builder, JSONObject format) throws JSONException {
-        if (!format.has("audioSampleRate")) return;
-        if (format.has("width")) return;
+	if(!isAudioFormat(format)) return;
 
         int itag = format.getInt("itag");
         String _mime = format.getString("mimeType");
@@ -626,6 +640,52 @@ public class Youtube {
         builder.append("</MPD>");
 
         return builder.toString().replaceAll("&", "&#38;");
+    }
+
+    public static JSONArray getFormats(final String id) {
+	Pair<JSONObject, String> result = getInitialPlayerResponse(id);
+	if(result.first == null) return null;
+
+	JSONObject streamingData = getOb(result.first, "streamingData");
+	JSONArray formats = concat(getAr(streamingData, "formats"), getAr(streamingData, "adaptiveFormats"));
+
+	//ENCRYPT
+        try {
+            if (!decryptFormats(formats, result.second)) {
+                return null;
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return null;
+        }
+	
+	return formats;
+    }
+
+    public static boolean isVideoFormat(final JSONObject format) {
+	if(format == null) return false;
+	if (format.has("audioSampleRate")) return false;
+        if (!format.has("width")) return false;
+	return true;
+    }
+
+    public static boolean isAudioFormat(final JSONObject format) {
+	if(format == null) return false;
+	if (!format.has("audioSampleRate")) return false;
+	if (format.has("width")) return false;
+	return true;
+    }
+
+    public static JSONArray getAudioFormats(final String id) {
+	JSONArray formats = getFormats(id);
+	if(formats == null) return null;
+	
+	JSONArray result = new JSONArray();
+	for(int i=0;i<formats.length();i++) {
+	    JSONObject format = formats.getJSONObject(i);
+	    if(isAudioFormat(format)) result.put(format);
+	}
+	return result;
     }
 
     public static JSONObject getInfo(final String id) {

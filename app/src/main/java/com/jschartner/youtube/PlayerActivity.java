@@ -71,7 +71,7 @@ public class PlayerActivity extends AppCompatActivity {
 
 		@Override
 		public void onDoubleClick() {
-		    if(jexoPlayer != null) jexoPlayer.seekTo(1500);
+		    if(jexoPlayer != null) jexoPlayer.seekTo(15000);
 		}
 	    });
 	

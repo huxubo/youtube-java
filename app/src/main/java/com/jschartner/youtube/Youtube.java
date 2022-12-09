@@ -428,15 +428,13 @@ public class Youtube {
             String signatureCipher = format.optString("signatureCipher");
             String url;
 
-	    url = decoder.apply(signatureCipher);
 
-	    /*
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
                 url = decoder.apply(signatureCipher);
             } else {
                 return false;
             }
-	    */
+
             format.put("url", url);
         }
 
@@ -665,7 +663,7 @@ public class Youtube {
     public static boolean isVideoFormat(final JSONObject format) {
 	if(format == null) return false;
 	if (format.has("audioSampleRate")) return false;
-        if (!format.has("width")) return false;
+    if (!format.has("width")) return false;
 	return true;
     }
 
@@ -682,7 +680,7 @@ public class Youtube {
 	
 	JSONArray result = new JSONArray();
 	for(int i=0;i<formats.length();i++) {
-	    JSONObject format = formats.getJSONObject(i);
+	    JSONObject format = formats.optJSONObject(i);
 	    if(isAudioFormat(format)) result.put(format);
 	}
 	return result;

@@ -198,23 +198,6 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-	/*
-	copyToClipboard(results.getJSONObject(0)
-			.getJSONObject("ownerText")
-			.getJSONArray("runs")
-			.getJSONObject(0)
-			.getString("text")
-			.toString());
-
-	copyToClipboard(results.getJSONObject(0)
-			.getJSONObject("channelThumbnailSupportedRenderers")
-			.getJSONObject("channelThumbnailWithLinkRenderer")
-			.getJSONObject("thumbnail")
-			.getJSONArray("thumbnails")
-			.getJSONObject(0)
-			.getString("url")
-			.toString());
-	 */
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -269,6 +252,8 @@ public class MainActivity extends AppCompatActivity {
                 jexoplayerView.setVisibility(jexoPlayer.isEmpty() ? View.GONE : View.VISIBLE);
             }
         });
+
+        Utils.toast(this, "Hello, World!");
     }
 
     @Override

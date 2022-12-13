@@ -210,7 +210,13 @@ public class Youtube {
 
     private static void init() {
         if (engine == 0) {
+            //avutil avformat avcodec swscale swresample
+            final String[] libs = {"avutil", "avformat", "avcodec", "swscale", "swresample"};
+            for(int i=0;i<libs.length;i++) {
+                System.loadLibrary(libs[i]);
+            }
             System.loadLibrary("native-lib");
+
             engine = initEngine();
         }
         if (req == null) {
@@ -225,11 +231,11 @@ public class Youtube {
         }
     }
 
-    private static native long initEngine();
+    private static final native long initEngine();
 
-    private static native String runScript(String code, long pointer);
+    private static final synchronized native String runScript(String code, long pointer);
 
-    private static native void closeEngine(long pointer);
+    private static final native void closeEngine(long pointer);
 
     private static JSONObject getOb(final JSONObject json, final String key) {
         try {

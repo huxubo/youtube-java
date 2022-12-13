@@ -1,13 +1,22 @@
 package com.jschartner.youtube;
 
+import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -33,6 +42,8 @@ import org.json.JSONObject;
 import java.io.InputStream;
 
 public class MainActivity extends AppCompatActivity {
+    private static final int REQUEST_TAKE_GALLERY_VIDEO = 69;
+
     private JexoPlayer jexoPlayer;
     private JexoPlayerView jexoplayerView;
 
@@ -43,6 +54,12 @@ public class MainActivity extends AppCompatActivity {
     private History history;
 
     private boolean doubleBackToExitIsPressedOnce = false;
+
+    private long enqueue;
+    private DownloadManager downloadManager;
+    private long downloadStartTime;
+
+    Vibrator vibrator;
 
     private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
         private ImageView imageView;
@@ -175,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    public void startPlayer(String id) {
+    public void startPlayer(final String id) {
         Intent intent = new Intent(getApplicationContext(), PlayerActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra("id", id);
@@ -194,6 +211,20 @@ public class MainActivity extends AppCompatActivity {
     public void onPause() {
         super.onPause();
         jexoplayerView.setPlayer((Player) null);
+    }
+
+
+    private void vibrate() {
+        if(vibrator == null) {
+            vibrator = (Vibrator) getApplicationContext().getSystemService(Context.VIBRATOR_SERVICE);
+        }
+        long duration = 100;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE));
+        } else {
+            //deprecated in API 26
+            vibrator.vibrate(duration);
+        }
     }
 
     @Override
@@ -215,6 +246,57 @@ public class MainActivity extends AppCompatActivity {
         resultAdapter = new ResultAdapter(this, R.layout.list_item);
         listView = findViewById(R.id.listView);
         listView.setAdapter(resultAdapter);
+        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                vibrate();
+
+                final String videoId = resultAdapter.getItem(position).optString("videoId");
+                JSONObject info = Youtube.getInfo(videoId);
+                final String title = info.optString("title");
+
+                JSONArray formats = Youtube.getFormats(videoId);
+                int minPos = -1;
+                int minBitRate = Integer.MAX_VALUE;
+                for(int i=formats.length()-1;i>=0;i--) {
+                    JSONObject format = formats.optJSONObject(i);
+                    if(Youtube.isAudioFormat(format)) {
+                        if(!format.has("averageBitrate")) continue;
+                        String _mime = format.optString("mimeType");
+                        if(_mime.contains("webm")) continue;
+                        int averageBitrate = format.optInt("averageBitrate");
+                        if(averageBitrate < minBitRate) {
+                            minPos = i;
+                            minBitRate = averageBitrate;
+                        }
+                    }
+                }
+
+                if(minPos == -1) {
+                    Utils.toast(getApplicationContext(), "No audio found");
+
+                    return true;
+                }
+
+                JSONObject format = formats.optJSONObject(minPos);
+                String formatCode = String.valueOf(format.opt("itag"));
+                String _mime = format.optString("mimeType");
+                String[] parts = _mime.split(";");
+                String[] mimeParts = parts[0].split("/");
+                String mime = mimeParts[mimeParts.length - 1];
+
+                final String name = new StringBuilder(title)
+                        .append("_")
+                        .append(formatCode)
+                        .append(".")
+                        .append(("webm".equals(mime)) ? "webm" : "m4a")
+                        .toString();
+
+                Utils.toast(getApplicationContext(), name);
+                downloadFile(name, format.optString("url"));
+                return true;
+            }
+        });
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -238,7 +320,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
         jexoplayerView.setOnTouchListener(new OnSwipeTouchListener(this) {
             @Override
             public void onSwipeTop() {
@@ -253,7 +334,45 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Utils.toast(this, "Hello, World!");
+        registerReceiver(receiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+    }
+
+    BroadcastReceiver receiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if(DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(action)) {
+                long downloadId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, 0);
+                DownloadManager.Query query = new DownloadManager.Query();
+                query.setFilterById(enqueue);
+                Cursor c = downloadManager.query(query);
+                if(c.moveToFirst()) {
+                    int stateIndex = c.getColumnIndex(DownloadManager.COLUMN_STATUS);
+                    int sizeIndex = c.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES);
+                    if(DownloadManager.STATUS_SUCCESSFUL == c.getInt(stateIndex)) {
+                        long duration = System.currentTimeMillis() - downloadStartTime;
+                        long sizeInBytes = c.getInt(sizeIndex);
+                        Utils.toast(getApplicationContext(), "Download is finished ("+((float) sizeInBytes/1000000)+" mb). It took "+(duration)+" ms");
+                    }
+                }
+            }
+        }
+    };
+
+    private void downloadFile(final String fileName, final String url) {
+        downloadManager = (DownloadManager) getApplicationContext().getSystemService(DOWNLOAD_SERVICE);
+        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url))
+                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+                .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI | DownloadManager.Request.NETWORK_MOBILE)
+                .setAllowedOverRoaming(false)
+                .setTitle(fileName);
+        downloadStartTime = System.currentTimeMillis();
+        enqueue = downloadManager.enqueue(request);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
     }
 
     @Override
@@ -298,6 +417,7 @@ public class MainActivity extends AppCompatActivity {
                 swipeLayout.requestFocus();
 
                 resultAdapter.refresh((JSONArray) history.searchLoop(query));
+                listView.setSelectionAfterHeaderView();
 
                 return true;
             }

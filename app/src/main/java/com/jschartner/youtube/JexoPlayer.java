@@ -6,6 +6,7 @@ import android.net.Uri;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.PlaybackException;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.Tracks;
 import com.google.android.exoplayer2.audio.AudioAttributes;
@@ -52,6 +53,16 @@ public class JexoPlayer {
     private static DatabaseProvider databaseProvider;
     private static File downloadDirectory;
     private static Cache downloadCache;
+
+    interface OnError {
+        void onError(PlaybackException playbackException);
+    }
+
+    private OnError onPlayerError;
+
+    public void setOnPlayerError(final OnError onPlayerError) {
+        this.onPlayerError = onPlayerError;
+    }
 
     private static synchronized DatabaseProvider getDatabaseProvider(Context context) {
         if (databaseProvider == null) {
@@ -129,14 +140,23 @@ public class JexoPlayer {
 
     public JexoPlayer(Context context) {
         //setMediaSourceFactory, setRenderersFactory ?
-        this.player = new ExoPlayer.Builder(context)
-                .build();
+        this.player = new ExoPlayer.Builder(context).build();
+        player.addListener(new Player.Listener() {
+            @Override
+            public void onPlayerError(PlaybackException error) {
+                Player.Listener.super.onPlayerError(error);
+                if(onPlayerError != null) {
+                    onPlayerError.onError(error);
+                }
+            }
+        });
+
         this.context = context.getApplicationContext();
         this.trackSelectionParameters = new TrackSelectionParameters.Builder(this.context).build();
         this.player.setTrackSelectionParameters(trackSelectionParameters);
         this.player.setAudioAttributes(AudioAttributes.DEFAULT, true);
         this.videoAutoSelection = true;
-	this.empty = true;
+	    this.empty = true;
     }
 
     public JexoFormat getVideoFormats() {
@@ -171,7 +191,7 @@ public class JexoPlayer {
         player.setMediaSource(source);
         player.setPlayWhenReady(true);
         player.prepare();
-	empty = false;
+	    empty = false;
     }
 
     private boolean playLinkWithFactory(String link, MediaSource.Factory factory) {

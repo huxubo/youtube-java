@@ -1,7 +1,5 @@
 package com.jschartner.youtube;
 
-import android.widget.LinearLayout;
-import android.graphics.Color;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
@@ -11,20 +9,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.TextView;
-
-import android.view.GestureDetector;
-import android.view.GestureDetector.SimpleOnGestureListener;
-import com.google.android.exoplayer2.ui.StyledPlayerView.ControllerVisibilityListener;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
-import android.view.MotionEvent;
-import android.view.View;
 
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.ui.StyledPlayerView;
@@ -42,6 +34,7 @@ public class JexoPlayerView extends StyledPlayerView {
     private TextView authorView;
     private ImageButton backButton;
     private LinearLayout upperLayout;
+    private ImageButton fullscreenButton;
 
     private RecyclerView settingsView;
     private PopupWindow settingsWindow;
@@ -59,6 +52,11 @@ public class JexoPlayerView extends StyledPlayerView {
     private JexoFormat videoFormats;
     private View.OnClickListener onClickListener;
     private OnBackPressedListener onBackPressedListener;
+    private View.OnClickListener onFullscreenPressedListener;
+
+    public void setOnFullscreenPressedListener(OnClickListener onFullscreenPressedListener) {
+        this.onFullscreenPressedListener = onFullscreenPressedListener;
+    }
 
     interface OnBackPressedListener {
 	void onBackPressed();
@@ -312,6 +310,7 @@ public class JexoPlayerView extends StyledPlayerView {
             authorView.setText(author == null ? "" : author);
         }
     }
+
     
     private void init() {
         setShowNextButton(false);
@@ -324,7 +323,9 @@ public class JexoPlayerView extends StyledPlayerView {
         authorView = findViewById(R.id.authorView);
 	backButton = findViewById(R.id.backButton);
 	upperLayout = findViewById(R.id.upperLayout);
+        fullscreenButton = findViewById(R.id.custom_fullscreen);
 	backButton.setColorFilter(0xffffffff);
+        fullscreenButton.setColorFilter(0xffffffff);
 
 	backButton.setOnClickListener(new View.OnClickListener(){
 		@Override
@@ -332,6 +333,12 @@ public class JexoPlayerView extends StyledPlayerView {
 		    if(onBackPressedListener != null) {
 			onBackPressedListener.onBackPressed();
 		    }
+		}
+	    });
+
+        fullscreenButton.setOnClickListener((v) -> {
+		if(onFullscreenPressedListener != null) {
+		    onFullscreenPressedListener.onClick(v);
 		}
 	    });
 
@@ -361,13 +368,13 @@ public class JexoPlayerView extends StyledPlayerView {
         settingsWindow = new PopupWindow(settingsView, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, true);
 
         button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                updateSelectedPlaybackSpeedIndex();
-                updateSelectedVideoFormat();
-                displaySettingsWindow(settingsAdapter);
-            }
-        });
+		@Override
+		public void onClick(View v) {
+		    updateSelectedPlaybackSpeedIndex();
+		    updateSelectedVideoFormat();
+		    displaySettingsWindow(settingsAdapter);
+		}
+	    });
     }
 
     public JexoPlayerView(Context context) {

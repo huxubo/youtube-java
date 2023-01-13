@@ -40,6 +40,7 @@
       android:layout_gravity="bottom"
       android:background="@color/exo_bottom_bar_background"
       android:layoutDirection="ltr">
+  <!-- gradient2 as background -->
 
     <LinearLayout android:id="@id/exo_time"
         android:layout_width="wrap_content"
@@ -86,6 +87,12 @@
 
       <ImageButton android:id="@+id/exo_custom_button"
           style="@style/ExoStyledControls.Button.Bottom.Settings"/>
+
+      <ImageButton
+          android:id="@+id/custom_fullscreen"
+          android:src="@drawable/fullscreen"
+
+          style="@style/ExoStyledControls.Button.Bottom.Settings" />
 
       <ImageButton android:id="@id/exo_fullscreen"
           style="@style/ExoStyledControls.Button.Bottom.FullScreen"/>
@@ -196,14 +203,14 @@
           android:layout_width="wrap_content"
           android:layout_height="wrap_content"
           android:textColor="@color/white"
-          android:textSize="16sp"></TextView>
+          android:textSize="14sp"></TextView>
 
       <TextView
           android:id="@+id/authorView"
           android:layout_width="wrap_content"
           android:layout_height="wrap_content"
           android:textColor="@color/white"
-          android:textSize="12sp" />
+          android:textSize="10sp" />
     </LinearLayout>
 
   </LinearLayout>

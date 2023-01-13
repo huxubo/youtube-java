@@ -1,11 +1,12 @@
 package com.jschartner.youtube;
 
+import static js.Io.concat;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -19,7 +20,6 @@ import js.Req;
 
 public class Youtube {
     private static long engine = 0;
-    private static Req req = null;
 
     private static String lastId = null;
     private static String lastResponse = null;
@@ -36,36 +36,17 @@ public class Youtube {
         close();
     }
 
-    private static void setBadges(final JSONArray results) {
-        if (results == null) return;
-        for (int i = 0; i < results.length(); i++) {
-            JSONObject result = results.optJSONObject(i);
-            JSONArray array = new JSONArray();
-            try {
-                JSONArray badges = result
-                        .getJSONArray("badges");
-                for (int j = 0; j < badges.length(); j++) {
-                    array.put(badges.getJSONObject(j)
-                            .getJSONObject("metadataBadgeRenderer").getString("label"));
-                }
-            } catch (JSONException e) {
-                continue;
-            }
-
-            try {
-                result.put("isLive", array);
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    private static String getOrNull(Req requestObject, String url) {
+    private static String getOrNull(String url) {
         final String[] _response = {""};
+        final String cookie = "CONSENT=PENDING+850; PREF=tz=Europe.Berlin&f6=40000000&volume=25&f7=100; SOCS=CAISEwgDEgk0Njk3MzYzNjMaAmRlIAEaBgiAmqCYBg; VISITOR_INFO1_LIVE=Ybyv105COqY; _gcl_au=1.1.2136643758.1666020829; SID=Swj5ITEcoF8jbVu52QiLgyuDKaXRk-bT5fugz1t9rWefF1PiPjIK33IAfBquHqv4t5WivQ.; __Secure-1PSID=Swj5ITEcoF8jbVu52QiLgyuDKaXRk-bT5fugz1t9rWefF1PiEzUxejwOHFUVvWMVffWpWA.; __Secure-3PSID=Swj5ITEcoF8jbVu52QiLgyuDKaXRk-bT5fugz1t9rWefF1Pi0-raJzdb-u3ImNU0yOBPuQ.; HSID=Ap3By4Dxv9d7WCrOk; SSID=AIrUKWcvmMpekFnbK; APISID=UspeSy-iDLnKXVO…Ho1RGE1YUdubW5YVmdHRkpBV1BRazVvRVZrc213NWNDVzZKRHJwZGs1NXNtV2JEMlRPUmEtcVIwWWFSUkdTZnZFZzRsMHcyTG52N2tLLUF5MEplVGUwaUdHUXhUZTUySnZzRHJWTDEyNWpQUVlNMTFB; SIDCC=AIKkIs0xyhwA4MU2nCYOuTPCQL5PEaNkIEtPZwbBSJ1l5kPew6PIKyups8Fr8oAOocIsGm8XPqEi; __Secure-1PSIDCC=AIKkIs2n4vMlec-2YSYq03fBRaMjNoXf7dBQ7FjEF2A7M3TnbI3MPIe1aATVh7aZXbQ6zefEgkGU; __Secure-3PSIDCC=AIKkIs3VSlqT8CGQwdXcOhzH0puRjCo8AED22l9rn4DdsuxFJBSUbWFr_pOAAzI8i9I6NsMO_s8; DEVICE_INFO=ChxOekU0T0RJeE9EZ3dPVFU0TVRRNE16TXdOQT09EOzdhp4GGOzdhp4G; YSC=uXYcE1fjvXU";
+
 
         Thread thread = new Thread(() -> {
             try {
-                _response[0] = requestObject.request(url, "GET");
+                final Req.Result result = Req.builder(url, "GET")
+                        .set("Cookie", cookie)
+                        .build();
+                _response[0] = result.ok ? Req.utf8(result.data) : null;
             } catch (Exception e) {
                 _response[0] = null;
                 e.printStackTrace();
@@ -84,27 +65,11 @@ public class Youtube {
     }
 
     public static JSONArray search() {
-        String api = "https://www.youtube.com/";
-        if (req == null) init();
-        final String response = getOrNull(req, api);
-        if (response == null) {
-            return null;
-        }
+        final String api = "https://www.youtube.com/";
 
-        int pos = response.indexOf("ytInitialData = ");
-        if (pos == -1) {
-            return null;
-        }
-
-        int _pos = pos + "ytInitialData = ".length();
-
-        int j = response.indexOf("</script>", _pos);
-
-        JSONObject ytInitialData;
-        try {
-            ytInitialData = new JSONObject(response.substring(_pos, j));
-        } catch (JSONException e) {
-            e.printStackTrace();
+        final String response = getOrNull(api);
+        final JSONObject ytInitialData = getInitialPlayerData(response);
+        if(ytInitialData == null) {
             return null;
         }
 
@@ -123,13 +88,24 @@ public class Youtube {
 
             for (int i = 0; i < contents.length(); i++) {
                 JSONObject result = contents.getJSONObject(i);
-                if (!result.has("richItemRenderer")) continue;
-                results.put(result.getJSONObject("richItemRenderer")
-                        .getJSONObject("content")
-                        .getJSONObject("videoRenderer"));
+                JSONObject richItemRenderer = result.optJSONObject("richItemRenderer");
+                if(richItemRenderer == null) {
+                    continue;
+                }
+
+                JSONObject content = richItemRenderer.optJSONObject("content");
+                if(content == null) {
+                    continue;
+                }
+
+                JSONObject videoRenderer = content.optJSONObject("videoRenderer");
+                if(videoRenderer == null) {
+                    continue;
+                }
+
+                results.put(videoRenderer);
             }
 
-            setBadges(results);
         } catch (JSONException e) {
             e.printStackTrace();
             return null;
@@ -140,66 +116,71 @@ public class Youtube {
     }
 
     public static JSONArray search(final String word) {
-        if(word==null) return search();
+        if (word == null) return search();
         final String api = "https://www.youtube.com/results?search_query=";
 
-        if (req == null) init();
-        //word.replaceAll(" ", "+")
-        final String response = getOrNull(req, api + word);
-        if (response == null) {
+        final String response = getOrNull(concat(api, Req.encode(word)));
+        final JSONObject ytInitialData = getInitialPlayerData(response);
+        if(ytInitialData == null) {
             return null;
-        }
-
-        int pos = response.indexOf("ytInitialData = ");
-        if (pos == -1) {
-            return null;
-        }
-
-        int _pos = pos + "ytInitialData = ".length();
-
-        int __pos = response.indexOf("</script>", _pos);
-
-        JSONObject ytInitialData;
-        try {
-            ytInitialData = new JSONObject(response.substring(_pos, __pos));
-        } catch (JSONException e) {
-            e.printStackTrace();
-            ytInitialData = null;
         }
 
         JSONArray results = new JSONArray();
 
         try {
-	    JSONArray _contents = ytInitialData
-		.getJSONObject("contents")
-		.getJSONObject("twoColumnSearchResultsRenderer")
-		.getJSONObject("primaryContents")
-		.getJSONObject("sectionListRenderer")
-		.getJSONArray("contents");
+            JSONArray _contents = ytInitialData
+                    .getJSONObject("contents")
+                    .getJSONObject("twoColumnSearchResultsRenderer")
+                    .getJSONObject("primaryContents")
+                    .getJSONObject("sectionListRenderer")
+                    .getJSONArray("contents");
 
-	    for(int j=0;j<_contents.length();j++) {
-		if(!_contents.getJSONObject(j).has("itemSectionRenderer")) continue;
-		JSONArray contents = _contents.getJSONObject(j)
-		    .getJSONObject("itemSectionRenderer")
-		    .getJSONArray("contents");
-		for (int i = 0; i < contents.length(); i++) {
-		    JSONObject result = contents.getJSONObject(i);
-		    if (result.has("videoRenderer")) {
-			results.put(result.getJSONObject("videoRenderer"));
-		    } else if (result.has("shelfRenderer")) {
-			JSONArray shelfs = result.getJSONObject("shelfRenderer")
-			    .getJSONObject("content")
-			    .getJSONObject("verticalListRenderer")
-			    .getJSONArray("items");
+            for (int j = 0; j < _contents.length(); j++) {
+                JSONObject _content = _contents.getJSONObject(j);
+                JSONObject itemSectionRenderer = _content.optJSONObject("itemSectionRenderer");
+                if(itemSectionRenderer == null) {
+                    continue;
+                }
+                JSONArray contents = itemSectionRenderer.optJSONArray("contents");
+                if(contents == null) {
+                    continue;
+                }
 
-			for (int k = 0; k < shelfs.length(); k++) {
-			    results.put(shelfs.getJSONObject(k).getJSONObject("videoRenderer"));
-			}
-		    }
-		}
-	    }
-	    
-	    setBadges(results);
+                for (int i = 0; i < contents.length(); i++) {
+                    JSONObject result = contents.getJSONObject(i);
+                    JSONObject videoRenderer = result.optJSONObject("videoRenderer");
+                    if(videoRenderer != null) {
+                        results.put(videoRenderer);
+                    }
+
+                    JSONObject shelfRenderer = result.optJSONObject("shelfRenderer");
+                    if(shelfRenderer == null) {
+                        continue;
+                    }
+                    JSONObject content = shelfRenderer.optJSONObject("content");
+                    if(content == null) {
+                        continue;
+                    }
+                    JSONObject verticalListRenderer = content.optJSONObject("verticalListRenderer");
+                    if(verticalListRenderer == null) {
+                        continue;
+                    }
+                    JSONArray items = verticalListRenderer.optJSONArray("items");
+                    if(items == null) {
+                        continue;
+                    }
+
+                    for (int k = 0; k < items.length(); k++) {
+                        JSONObject shelf = items.getJSONObject(k);
+                        JSONObject shelVideoRenderer = shelf.optJSONObject("videoRenderer");
+                        if(shelVideoRenderer == null) {
+                            continue;
+                        }
+                        results.put(shelVideoRenderer);
+                    }
+                }
+            }
+
         } catch (JSONException e) {
             e.printStackTrace();
             return null;
@@ -208,19 +189,59 @@ public class Youtube {
         return results;
     }
 
+    public static JSONArray getRecommendedVideos(final String id) {
+        final String api = "https://www.youtube.com/watch?v=";
+
+        final String response = getOrNull(concat(api, id));
+        final JSONObject ytInitialData = getInitialPlayerData(response);
+        final JSONArray result = new JSONArray();
+
+        try{
+            //TODO: add autoplay
+            //ytInitialData.getJSONObject("contents").getJSONObject("twoColumnWatchNextResults").getJSONObject("autoplay")
+
+            final JSONArray results = ytInitialData
+                    .getJSONObject("contents")
+                    .getJSONObject("twoColumnWatchNextResults")
+                    .getJSONObject("secondaryResults")
+                    .getJSONObject("secondaryResults")
+                    .getJSONArray("results");
+
+            for(int i=0;i<results.length();i++) {
+                JSONObject _result = results.getJSONObject(i);
+                JSONObject itemSectionRenderer = _result.optJSONObject("itemSectionRenderer");
+                if(itemSectionRenderer == null) {
+                    continue;
+                }
+                JSONArray contents = itemSectionRenderer.optJSONArray("contents");
+                if(contents == null) {
+                    continue;
+                }
+
+                for(int j=0;j<contents.length();j++) {
+                    JSONObject content = contents.optJSONObject(j);
+                    JSONObject compactVideoRenderer = content
+                            .optJSONObject("compactVideoRenderer");
+                    if(compactVideoRenderer == null) {
+                        continue;
+                    }
+                    result.put(compactVideoRenderer);
+                }
+            }
+
+        } catch(JSONException e) {
+            e.printStackTrace();
+            return null;
+        }
+
+        return result;
+    }
+
     private static void init() {
         if (engine == 0) {
-            //avutil avformat avcodec swscale swresample
-            final String[] libs = {"avutil", "avformat", "avcodec", "swscale", "swresample"};
-            for(int i=0;i<libs.length;i++) {
-                System.loadLibrary(libs[i]);
-            }
-            System.loadLibrary("native-lib");
+            System.loadLibrary("duktape-lib");
 
             engine = initEngine();
-        }
-        if (req == null) {
-            req = new Req();
         }
     }
 
@@ -253,7 +274,7 @@ public class Youtube {
         }
     }
 
-    private static JSONArray concat(final JSONArray arr1, final JSONArray arr2) {
+    private static JSONArray concatJson(final JSONArray arr1, final JSONArray arr2) {
         JSONArray res = new JSONArray();
 
         for (int i = 0; i < arr1.length(); i++) {
@@ -281,14 +302,6 @@ public class Youtube {
         return matches.size() > 0 ? matches : null;
     }
 
-    private static String decode(final String val) {
-        try {
-            return URLDecoder.decode(val, StandardCharsets.UTF_8.toString());
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     private static Map<String, String> getQueryMap(final String query) {
         String[] params = query.split("&");
         Map<String, String> map = new HashMap<>();
@@ -304,13 +317,38 @@ public class Youtube {
     }
 
     static class Pair<T, V> {
-	final T first;
-	final V second;
+        final T first;
+        final V second;
 
-	public Pair(T first, V second) {
-	    this.first = first;
-	    this.second = second;
-	}
+        public Pair(T first, V second) {
+            this.first = first;
+            this.second = second;
+        }
+    }
+
+    private static JSONObject getInitialPlayerData(final String response) {
+        if(response == null) {
+            return null;
+        }
+
+        int pos = response.indexOf("ytInitialData = ");
+        if (pos == -1) {
+            return null;
+        }
+
+        int _pos = pos + "ytInitialData = ".length();
+
+        int __pos = response.indexOf("</script>", _pos);
+        if(__pos < 0) {
+            return null;
+        }
+
+        try {
+            return new JSONObject(response.substring(_pos, __pos));
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private static Pair<JSONObject, String> getInitialPlayerResponse(final String id) {
@@ -335,7 +373,7 @@ public class Youtube {
         }
 
         String match = matches.get(1);
-        String playerResponse = match + "}}}";
+        String playerResponse = concat(match, "}}}");
 
         JSONObject json;
         try {
@@ -351,9 +389,8 @@ public class Youtube {
     }
 
     private static String requestApi(final String id) {
-        if (req == null) init();
         String api = "https://www.youtube.com/watch?v=";
-        return getOrNull(req, api + id);
+        return getOrNull(concat(api, id));
     }
 
     private static Function<String, String> buildDecoder(final String response) {
@@ -367,13 +404,8 @@ public class Youtube {
             return null;
         }
 
-        if (req == null) init();
-        String jsFileContent = getOrNull(req, "https://www.youtube.com" + jsFileUrlMatches.get(0));
+        String jsFileContent = getOrNull("https://www.youtube.com" + jsFileUrlMatches.get(0));
         if (jsFileContent == null) {
-            return null;
-        }
-
-        if (req.failed()) {
             return null;
         }
 
@@ -401,17 +433,17 @@ public class Youtube {
         return signatureCipher -> {
 
             Map<String, String> params = getQueryMap(signatureCipher);
-            String url = decode(params.get("url"));
-            String signature = decode(params.get("s"));
+            String url = Req.decode(params.get("url"));
+            String signature = Req.decode(params.get("s"));
 
-            String expr = "\"use-strict\";" +
-                    varDeclaresMatches.get(1) +
-                    "(" + decodeFunction + ")(\"" + signature + "\");";
+            String expr = concat("\"use-strict\";",
+                    varDeclaresMatches.get(1),
+                    "(", decodeFunction, ")(\"", signature, "\");");
 
             String val = runScript(expr, engine);
-            String script = "encodeURIComponent(\"" + val + "\")";
+            String script = concat("encodeURIComponent(\"", val, "\")");
 
-            return url + "&sig=" + runScript(script, engine);
+            return url + concat("&sig=", runScript(script, engine));
         };
     }
 
@@ -448,7 +480,7 @@ public class Youtube {
     }
 
     private static void buildVideo(final StringBuilder builder, final JSONObject format) throws JSONException {
-	if(!isVideoFormat(format)) return;
+        if (!isVideoFormat(format)) return;
 
         String _mime = format.getString("mimeType");
         String[] parts = _mime.split(";");
@@ -507,7 +539,7 @@ public class Youtube {
     }
 
     private static void buildAudio(StringBuilder builder, JSONObject format) throws JSONException {
-	if(!isAudioFormat(format)) return;
+        if (!isAudioFormat(format)) return;
 
         int itag = format.getInt("itag");
         String _mime = format.getString("mimeType");
@@ -624,8 +656,8 @@ public class Youtube {
         builder.append("\t\t</AdaptationSet>\n");
         //AUDIO
 
-        builder.append("\t\t<AdaptationSet segmentAlignment=\"true\" startsWithSAP=\"1\"" +
-                " scanType=\"progressive\" >\n");
+        builder.append("\t\t<AdaptationSet segmentAlignment=\"true\" startsWithSAP=\"1\"")
+                .append(" scanType=\"progressive\" >\n");
 
         for (int i = 0; i < formats.length(); i++) {
             buildAudio(builder, formats.getJSONObject(i));
@@ -635,11 +667,11 @@ public class Youtube {
 
         builder.append("\t</Period>\n\n\n");
 
-        builder.append("\t<Metrics metrics=\"BufferLevel\">\n" +
-                "\t\t<Reporting schemeIdUri=\"urn:mpeg:dash:sand:channel:2016\" value=\"channel-reporting\"/>\n" +
-                "\t\t<Range duration=\"PT5S\"/>\n" +
-                "\t</Metrics>\n" +
-                "\t<sand:Channel id=\"channel-reporting\" schemeIdUri=\"urn:mpeg:dash:sand:channel:http:2016\" endpoint=\"https://sand-http-test-dane.herokuapp.com/metrics\"/>\n");
+        builder.append("\t<Metrics metrics=\"BufferLevel\">\n")
+                .append("\t\t<Reporting schemeIdUri=\"urn:mpeg:dash:sand:channel:2016\" value=\"channel-reporting\"/>\n")
+                .append("\t\t<Range duration=\"PT5S\"/>\n")
+                .append("\t</Metrics>\n")
+                .append("\t<sand:Channel id=\"channel-reporting\" schemeIdUri=\"urn:mpeg:dash:sand:channel:http:2016\" endpoint=\"https://sand-http-test-dane.herokuapp.com/metrics\"/>\n");
 
         builder.append("</MPD>");
 
@@ -647,13 +679,13 @@ public class Youtube {
     }
 
     public static JSONArray getFormats(final String id) {
-	Pair<JSONObject, String> result = getInitialPlayerResponse(id);
-	if(result.first == null) return null;
+        Pair<JSONObject, String> result = getInitialPlayerResponse(id);
+        if (result.first == null) return null;
 
-	JSONObject streamingData = getOb(result.first, "streamingData");
-	JSONArray formats = concat(getAr(streamingData, "formats"), getAr(streamingData, "adaptiveFormats"));
+        JSONObject streamingData = getOb(result.first, "streamingData");
+        JSONArray formats = concatJson(getAr(streamingData, "formats"), getAr(streamingData, "adaptiveFormats"));
 
-	//ENCRYPT
+        //ENCRYPT
         try {
             if (!decryptFormats(formats, result.second)) {
                 return null;
@@ -662,44 +694,117 @@ public class Youtube {
             e.printStackTrace();
             return null;
         }
-	
-	return formats;
+
+        List<Integer> toBeRemoved = new ArrayList<>();
+
+        for(int i=0;i<formats.length();i++) {
+            final JSONObject format = formats.optJSONObject(i);
+            if(format == null) continue;
+            final String url = format.optString("url");
+            if(url == null) continue;
+            long len = -1;
+            try {
+                final Req.Result response = Utils.onThread(Req.builder(url, "HEAD"));
+                len = response.ok ? response.len : -1;
+            }
+            catch(IOException e) {
+                e.printStackTrace();
+            }
+
+            if(len == -1) {
+                toBeRemoved.add(i);
+            }
+
+            try {
+                format.put("lengthInBytes", len);
+            } catch(JSONException e) {
+                e.printStackTrace();
+            }
+        }
+
+        for(int i=0;i<toBeRemoved.size();i++) {
+            formats.remove(toBeRemoved.get(i));
+        }
+
+        return formats;
+    }
+
+    public static String getTitle(final String id) {
+        final JSONObject info = getInfo(id);
+        if(info == null) return null;
+        final String title = info.optString("title");
+        if(title == null || title.length() == 0) return null;
+        return title
+                .replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+    }
+
+    //[fileTitle, filePath]
+    public static String[] getNames(final JSONObject format, final String title, final String prefix) {
+        if(format == null) return null;
+        if(title == null || title.length() == 0) return null;
+
+        final String suffix = getSuffix(format);
+        if(suffix == null) return null;
+        return new String[]{concat(title, suffix), concat(prefix, "/", title, suffix)};
+    }
+
+    public static String getSuffix(final JSONObject format) {
+        if(format == null) return null;
+        if (!format.has("mimeType")) return null;
+
+        final boolean isVideo = isVideoFormat(format);
+        final boolean isAudio = isAudioFormat(format);
+
+        if(!(isVideo ^ isAudio)) return null;
+
+        final boolean video = isVideo;
+
+        String _mime = format.optString("mimeType");
+        String[] parts = _mime.split(";");
+        if(parts.length == 0) return null;
+        String[] mimeParts = parts[0].split("/");
+        if(mimeParts.length == 0) return null;
+        String mime = mimeParts[mimeParts.length - 1];
+
+        return concat(video ? "_video" : "", ".",
+                video
+                        ? (("webm".equals(mime)) ? "webm" : "mp4")
+                        : (("webm".equals(mime)) ? "webm" : "m4a"));
     }
 
     public static boolean isVideoFormat(final JSONObject format) {
-	if(format == null) return false;
-	if (format.has("audioSampleRate")) return false;
-    if (!format.has("width")) return false;
-	return true;
+        if (format == null) return false;
+        if (format.has("audioSampleRate")) return false;
+        if (!format.has("width")) return false;
+        return true;
     }
 
     public static boolean isAudioFormat(final JSONObject format) {
-	if(format == null) return false;
-	if (!format.has("audioSampleRate")) return false;
-	if (format.has("width")) return false;
-	return true;
+        if (format == null) return false;
+        if (!format.has("audioSampleRate")) return false;
+        if (format.has("width")) return false;
+        return true;
     }
 
     public static JSONArray getAudioFormats(final String id) {
-	JSONArray formats = getFormats(id);
-	if(formats == null) return null;
-	
-	JSONArray result = new JSONArray();
-	for(int i=0;i<formats.length();i++) {
-	    JSONObject format = formats.optJSONObject(i);
-	    if(isAudioFormat(format)) result.put(format);
-	}
-	return result;
+        JSONArray formats = getFormats(id);
+        if (formats == null) return null;
+
+        JSONArray result = new JSONArray();
+        for (int i = 0; i < formats.length(); i++) {
+            JSONObject format = formats.optJSONObject(i);
+            if (isAudioFormat(format)) result.put(format);
+        }
+        return result;
     }
 
     public static JSONObject getInfo(final String id) {
         Pair<JSONObject, String> result = getInitialPlayerResponse(id);
-        if(result.first == null) return null;
+        if (result.first == null) return null;
 
-        try{
+        try {
             return result.first.getJSONObject("videoDetails");
-        }
-        catch(JSONException e) {
+        } catch (JSONException e) {
             return null;
         }
     }
@@ -753,7 +858,7 @@ public class Youtube {
         }
 
         JSONObject streamingData = getOb(initialPlayerResponse, "streamingData");
-        JSONArray formats = concat(getAr(streamingData, "formats"), getAr(streamingData, "adaptiveFormats"));
+        JSONArray formats = concatJson(getAr(streamingData, "formats"), getAr(streamingData, "adaptiveFormats"));
         JSONObject videoDetails = getOb(initialPlayerResponse, "videoDetails");
 
         if (formats.length() == 0) {
@@ -797,13 +902,11 @@ public class Youtube {
             @Override
             public String next() {
                 String out = null;
-                if(pos ==0) {
-                    out =  buildDashSource(id);
-                }
-                else if(pos ==1) {
+                if (pos == 0) {
+                    out = buildDashSource(id);
+                } else if (pos == 1) {
                     out = getM3u8(id);
-                }
-                else if(pos ==2) {
+                } else if (pos == 2) {
                     out = getDash(id);
                 }
                 pos++;

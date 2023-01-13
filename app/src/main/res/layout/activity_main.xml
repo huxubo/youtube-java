@@ -17,8 +17,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:translationZ="-1dp"/>
-
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
     <com.jschartner.youtube.JexoPlayerView
             android:id="@+id/playerView"
             android:layout_width="160dp"
@@ -26,6 +26,7 @@
             android:translationZ="10dp"
             android:layout_gravity="bottom|right"
             android:layout_marginRight="8dp"
-            android:layout_marginBottom="8dp"/>
+            android:layout_marginBottom="8dp"
+            android:background="@color/black"/>
 </FrameLayout>
 

@@ -1,24 +1,102 @@
 package com.jschartner.youtube;
 
+import static android.content.Context.CONNECTIVITY_SERVICE;
+
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
+import android.os.Build;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
 
-import com.google.android.exoplayer2.source.MediaSource;
+import org.json.JSONObject;
+
+import java.io.IOException;
+
+import js.Req;
 
 public class Utils {
     private static JexoPlayer jexoPlayer = null;
 
     public static JexoPlayer getJexoPlayer(Context context) {
-	if(jexoPlayer == null) {
+	    if(jexoPlayer == null) {
 	    jexoPlayer = new JexoPlayer(context);
 	}
 	return jexoPlayer;
     }
 
+    public static Req.Result onThread(final Req.Builder builder) {
+        final Req.Result[] result = {null};
+
+        Thread thread = new Thread(() -> {
+        try{
+            result[0] = builder.build();
+        }
+        catch(IOException e) {
+            e.printStackTrace();
+        }});
+
+        thread.start();
+
+        try{
+            thread.join();
+        } catch(InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        return result[0];
+    }
+
     public static void toast(Context context, String message) {
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show();
+    }
+
+    public static long getBandwidth(final Context context) {
+        ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(CONNECTIVITY_SERVICE);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            NetworkCapabilities nc = connectivityManager.getNetworkCapabilities(connectivityManager.getActiveNetwork());
+            return (long) nc.getLinkDownstreamBandwidthKbps();
+        }
+        return -1;
+    }
+
+    public static void createNotificationChannel(final Context context, final String channelId, final String notificationChannelName, final String notificationChannelDescription) {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = notificationChannelName;
+            String description = notificationChannelDescription;
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel(channelId, name, importance);
+            channel.setDescription(description);
+            // Register the channel with the system; you can't change the importance
+            // or other notification behaviors after this
+            NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
+    //WORK IN PROGRESS
+    public static Object optJSON(final JSONObject json, String ...paths) {
+        if(json == null) {
+            return null;
+        }
+
+        Object current = json;
+
+        for(int i=0;i<paths.length;i++) {
+            final String path = paths[0];
+            if(!(current instanceof JSONObject)) {
+                return null;
+            }
+            final JSONObject currentJSON = (JSONObject) current;
+
+        }
+
+        return current;
     }
 
     public static void makeDraggable(View view) {

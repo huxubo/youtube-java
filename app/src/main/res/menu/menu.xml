@@ -9,6 +9,7 @@
         app:showAsAction="collapseActionView|ifRoom"
         android:icon="@drawable/lupe"
         android:iconifiedByDefault="false"
-        app:actionViewClass="android.widget.SearchView" />
+        app:actionViewClass="android.widget.SearchView">
+    </item>
 
 </menu>

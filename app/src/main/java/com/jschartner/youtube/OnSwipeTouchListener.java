@@ -14,31 +14,35 @@ public class OnSwipeTouchListener implements OnTouchListener {
 
     private long lastClickTime = 0;
 
-    public OnSwipeTouchListener (Context ctx){
+    public OnSwipeTouchListener(Context ctx) {
         gestureDetector = new GestureDetector(ctx, new GestureListener());
     }
 
     public boolean onGesture(MotionEvent event) {
-	return gestureDetector.onTouchEvent(event);
+        return gestureDetector.onTouchEvent(event);
     }
 
     @Override
     public boolean onTouch(View v, MotionEvent event) {
-	boolean result = onGesture(event);
-	if(event.getAction() == MotionEvent.ACTION_MOVE) {
-	    return false;
-	}
-	if(!result) {
-	    long clickTime = System.currentTimeMillis();
-	    if(clickTime - lastClickTime < DOUBLE_CLICK_DELTA_TIME) {
-		onDoubleClick();
-		lastClickTime = 0;
-	    }
-	    else {
-		v.performClick();
-	    }
-	    lastClickTime = clickTime;
-	}
+        boolean result = onGesture(event);
+        if (event.getAction() == MotionEvent.ACTION_MOVE) {
+            return false;
+        }
+        if (!result) {
+            long clickTime = System.currentTimeMillis();
+            if (clickTime - lastClickTime < DOUBLE_CLICK_DELTA_TIME) {
+                if(event.getRawX() < v.getWidth()/ 2) {
+                    onDoubleLeftClick();
+                } else {
+                    onDoubleRightClick();
+                }
+                onDoubleClick();
+                lastClickTime = 0;
+            } else {
+                v.performClick();
+            }
+            lastClickTime = clickTime;
+        }
         return result;
     }
 
@@ -67,8 +71,7 @@ public class OnSwipeTouchListener implements OnTouchListener {
                         }
                         result = true;
                     }
-                }
-                else if (Math.abs(diffY) > SWIPE_THRESHOLD && Math.abs(velocityY) > SWIPE_VELOCITY_THRESHOLD) {
+                } else if (Math.abs(diffY) > SWIPE_THRESHOLD && Math.abs(velocityY) > SWIPE_VELOCITY_THRESHOLD) {
                     if (diffY > 0) {
                         onSwipeBottom();
                     } else {
@@ -83,9 +86,17 @@ public class OnSwipeTouchListener implements OnTouchListener {
         }
     }
 
-    public void onDoubleClick() {	
+    public void onDoubleClick() {
     }
-    
+
+    public void onDoubleLeftClick() {
+
+    }
+
+    public void onDoubleRightClick() {
+
+    }
+
     public void onSwipeRight() {
     }
 

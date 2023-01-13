@@ -25,8 +25,15 @@ endforeach ()
 
 #==============================================================
 
+add_library(
+        ffmpeg-lib
+
+        SHARED
+
+        src/main/cpp/ffmpeg_wrapper.c)
+
 add_library( # Sets the name of the library.
-         native-lib
+         duktape-lib
 
          # Sets the library as a shared library.
          SHARED
@@ -35,19 +42,23 @@ add_library( # Sets the name of the library.
          # Associated headers in the same location as their source
          # file are automatically included.
          src/main/cpp/duktape.c
-         src/main/cpp/ffmpeg_wrapper.c
          src/main/cpp/duktape_wrapper.c)
          
 find_library( # Sets the name of the path variable.
           log-lib
-
           # Specifies the name of the NDK library that
           # you want CMake to locate.
           log )
+
+target_link_libraries(
+        ffmpeg-lib
+
+        ${log-lib}
+
+        ${ffmpeg_libs_names})
+
 target_link_libraries( # Specifies the target library.
-                   native-lib
+                   duktape-lib
                    # Links the target library to the log library
                    # included in the NDK.
-                   ${log-lib} 
-
-                   ${ffmpeg_libs_names})
+                   ${log-lib})

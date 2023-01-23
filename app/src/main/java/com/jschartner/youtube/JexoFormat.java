@@ -46,7 +46,7 @@ class JexoFormat {
         return trackGroup;
     }
 
-    private String map(int width) {
+    public static String map(int width) {
         switch (width) {
             case 256:
                 return "144p";

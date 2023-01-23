@@ -57,7 +57,7 @@ public class Download implements Runnable {
     }
 
     private static final int NUMBER_OF_THREADS_REGULAR = 63;
-    private static final int BYTE_BUFFER_SIZE = 8192 << 1;
+    private static final int BYTE_BUFFER_SIZE = 8192 << 2;
 
     private static final RuntimeException runtimeException = new RuntimeException("You are not supposed to cancel the Download, if it is not started yet");
 

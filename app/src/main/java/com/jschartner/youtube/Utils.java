@@ -22,28 +22,48 @@ public class Utils {
     private static JexoPlayer jexoPlayer = null;
 
     public static JexoPlayer getJexoPlayer(Context context) {
-	    if(jexoPlayer == null) {
-	    jexoPlayer = new JexoPlayer(context);
-	}
-	return jexoPlayer;
+        if (jexoPlayer == null) {
+            jexoPlayer = new JexoPlayer(context);
+        }
+        return jexoPlayer;
+    }
+
+    public static void playerLoop(final JexoPlayer jexoPlayer, final String id) {
+        boolean[] errorHappened = {false};
+        jexoPlayer.setOnPlayerError((error) -> {
+            if (errorHappened[0]) return;
+            errorHappened[0] = true;
+            Youtube.resetCache();
+            jexoPlayer.playFirst(Youtube.allSources(id));
+        });
+
+        jexoPlayer.playFirst(Youtube.allSources(id), Youtube.toMediaItem(id));
+
+        final String newId = Youtube.getNextVideo(id);
+        jexoPlayer.setOnMediaEnded(() -> {
+            playerLoop(jexoPlayer, newId);
+        });
+
+        PlayerActivity.flush();
+        PlayerActivity.load(id);
     }
 
     public static Req.Result onThread(final Req.Builder builder) {
         final Req.Result[] result = {null};
 
         Thread thread = new Thread(() -> {
-        try{
-            result[0] = builder.build();
-        }
-        catch(IOException e) {
-            e.printStackTrace();
-        }});
+            try {
+                result[0] = builder.build();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
 
         thread.start();
 
-        try{
+        try {
             thread.join();
-        } catch(InterruptedException e) {
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
@@ -80,16 +100,16 @@ public class Utils {
     }
 
     //WORK IN PROGRESS
-    public static Object optJSON(final JSONObject json, String ...paths) {
-        if(json == null) {
+    public static Object optJSON(final JSONObject json, String... paths) {
+        if (json == null) {
             return null;
         }
 
         Object current = json;
 
-        for(int i=0;i<paths.length;i++) {
+        for (int i = 0; i < paths.length; i++) {
             final String path = paths[0];
-            if(!(current instanceof JSONObject)) {
+            if (!(current instanceof JSONObject)) {
                 return null;
             }
             final JSONObject currentJSON = (JSONObject) current;

@@ -2,6 +2,11 @@ package com.jschartner.youtube;
 
 import static js.Io.concat;
 
+import android.media.MediaMetadata;
+import android.os.Bundle;
+import android.support.v4.media.MediaBrowserCompat;
+import android.support.v4.media.MediaDescriptionCompat;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -38,19 +43,15 @@ public class Youtube {
 
     private static String getOrNull(String url) {
         final String[] _response = {""};
-        final String cookie = "CONSENT=PENDING+850; PREF=tz=Europe.Berlin&f6=40000000&volume=25&f7=100; SOCS=CAISEwgDEgk0Njk3MzYzNjMaAmRlIAEaBgiAmqCYBg; VISITOR_INFO1_LIVE=Ybyv105COqY; _gcl_au=1.1.2136643758.1666020829; SID=Swj5ITEcoF8jbVu52QiLgyuDKaXRk-bT5fugz1t9rWefF1PiPjIK33IAfBquHqv4t5WivQ.; __Secure-1PSID=Swj5ITEcoF8jbVu52QiLgyuDKaXRk-bT5fugz1t9rWefF1PiEzUxejwOHFUVvWMVffWpWA.; __Secure-3PSID=Swj5ITEcoF8jbVu52QiLgyuDKaXRk-bT5fugz1t9rWefF1Pi0-raJzdb-u3ImNU0yOBPuQ.; HSID=Ap3By4Dxv9d7WCrOk; SSID=AIrUKWcvmMpekFnbK; APISID=UspeSy-iDLnKXVO…Ho1RGE1YUdubW5YVmdHRkpBV1BRazVvRVZrc213NWNDVzZKRHJwZGs1NXNtV2JEMlRPUmEtcVIwWWFSUkdTZnZFZzRsMHcyTG52N2tLLUF5MEplVGUwaUdHUXhUZTUySnZzRHJWTDEyNWpQUVlNMTFB; SIDCC=AIKkIs0xyhwA4MU2nCYOuTPCQL5PEaNkIEtPZwbBSJ1l5kPew6PIKyups8Fr8oAOocIsGm8XPqEi; __Secure-1PSIDCC=AIKkIs2n4vMlec-2YSYq03fBRaMjNoXf7dBQ7FjEF2A7M3TnbI3MPIe1aATVh7aZXbQ6zefEgkGU; __Secure-3PSIDCC=AIKkIs3VSlqT8CGQwdXcOhzH0puRjCo8AED22l9rn4DdsuxFJBSUbWFr_pOAAzI8i9I6NsMO_s8; DEVICE_INFO=ChxOekU0T0RJeE9EZ3dPVFU0TVRRNE16TXdOQT09EOzdhp4GGOzdhp4G; YSC=uXYcE1fjvXU";
-
 
         Thread thread = new Thread(() -> {
-            try {
-                final Req.Result result = Req.builder(url, "GET")
-                        .set("Cookie", cookie)
-                        .build();
-                _response[0] = result.ok ? Req.utf8(result.data) : null;
-            } catch (Exception e) {
-                _response[0] = null;
-                e.printStackTrace();
-            }
+		try {
+		    final Req.Result result = Req.get(url);
+		    _response[0] = result.ok ? Req.utf8(result.data) : null;
+		} catch (Exception e) {
+		    _response[0] = null;
+		    e.printStackTrace();
+		}
         });
 
         thread.start();
@@ -65,7 +66,7 @@ public class Youtube {
     }
 
     public static JSONArray search() {
-        final String api = "https://www.youtube.com/";
+        final String api = "https://www.youtube.com";
 
         final String response = getOrNull(api);
         final JSONObject ytInitialData = getInitialPlayerData(response);
@@ -77,17 +78,48 @@ public class Youtube {
 
         try {
             JSONArray contents = ytInitialData
-                    .getJSONObject("contents")
-                    .getJSONObject("twoColumnBrowseResultsRenderer")
-                    .getJSONArray("tabs")
-                    .getJSONObject(0)
-                    .getJSONObject("tabRenderer")
-                    .getJSONObject("content")
-                    .getJSONObject("richGridRenderer")
-                    .getJSONArray("contents");
+		.getJSONObject("contents")
+		.getJSONObject("twoColumnBrowseResultsRenderer")
+		.getJSONArray("tabs")
+		.getJSONObject(0)
+		.getJSONObject("tabRenderer")
+		.getJSONObject("content")
+		.getJSONObject("richGridRenderer")
+		.getJSONArray("contents");
 
             for (int i = 0; i < contents.length(); i++) {
                 JSONObject result = contents.getJSONObject(i);
+		JSONObject richSectionRenderer = result.optJSONObject("richSectionRenderer");
+		if(richSectionRenderer != null) {
+		    JSONObject content = richSectionRenderer.optJSONObject("content");
+		    if(content != null) {
+			JSONObject richShelfRenderer = content.optJSONObject("richShelfRenderer");
+			if(richShelfRenderer != null) {
+			    JSONArray _contents = richShelfRenderer.optJSONArray("contents");
+			    if(_contents != null) {
+				for(int j=0;j<_contents.length();j++) {
+				    JSONObject __content = _contents.getJSONObject(j);
+				    JSONObject richItemRenderer = __content.optJSONObject("richItemRenderer");
+				    if(richItemRenderer == null) {
+					continue;
+				    }
+
+				    JSONObject _content = richItemRenderer.optJSONObject("content");
+				    if(_content == null) {
+					continue;
+				    }
+
+				    JSONObject videoRenderer = _content.optJSONObject("videoRenderer");
+				    if(videoRenderer == null) {
+					continue;
+				    }
+				    results.put(videoRenderer);
+				}
+			    }
+			}
+		    }
+		}
+				
                 JSONObject richItemRenderer = result.optJSONObject("richItemRenderer");
                 if(richItemRenderer == null) {
                     continue;
@@ -129,11 +161,11 @@ public class Youtube {
 
         try {
             JSONArray _contents = ytInitialData
-                    .getJSONObject("contents")
-                    .getJSONObject("twoColumnSearchResultsRenderer")
-                    .getJSONObject("primaryContents")
-                    .getJSONObject("sectionListRenderer")
-                    .getJSONArray("contents");
+		.getJSONObject("contents")
+		.getJSONObject("twoColumnSearchResultsRenderer")
+		.getJSONObject("primaryContents")
+		.getJSONObject("sectionListRenderer")
+		.getJSONArray("contents");
 
             for (int j = 0; j < _contents.length(); j++) {
                 JSONObject _content = _contents.getJSONObject(j);
@@ -189,26 +221,77 @@ public class Youtube {
         return results;
     }
 
+    public static String getNextVideo(final String id) {
+        final String api = "https://www.youtube.com/watch?v=";
+        if(id == null) {
+            return null;
+        }
+
+        final String response;
+        if(id.equals(lastId)) {
+            response = lastResponse;
+        } else {
+            response = getOrNull(concat(api, id));
+            lastId = id;
+            lastResponse = response;
+            lastPlayerResponse = null;
+        }
+
+        final JSONObject ytInitialData = getInitialPlayerData2(response);
+
+        try{
+            return ytInitialData.getJSONObject("contents")
+                    .getJSONObject("twoColumnWatchNextResults")
+                    .getJSONObject("autoplay")
+                    .getJSONObject("autoplay")
+                    .getJSONArray("sets")
+                    .getJSONObject(0)
+                    .getJSONObject("autoplayVideo")
+                    .getJSONObject("watchEndpoint")
+                    .optString("videoId");
+        }
+        catch(JSONException e) {
+            return null;
+        }
+    }
+
     public static JSONArray getRecommendedVideos(final String id) {
         final String api = "https://www.youtube.com/watch?v=";
 
-        final String response = getOrNull(concat(api, id));
-        final JSONObject ytInitialData = getInitialPlayerData(response);
-        final JSONArray result = new JSONArray();
+        if(id == null) {
+            return null;
+        }
+
+        final String response;
+        if(id.equals(lastId)) {
+            response = lastResponse;
+        } else {
+            response = getOrNull(concat(api, id));
+            lastId = id;
+            lastResponse = response;
+            lastPlayerResponse = null;
+        }
+
+        final JSONObject ytInitialData = getInitialPlayerData2(response);
+        final JSONArray result = new JSONArray();	
 
         try{
             //TODO: add autoplay
             //ytInitialData.getJSONObject("contents").getJSONObject("twoColumnWatchNextResults").getJSONObject("autoplay")
 
             final JSONArray results = ytInitialData
-                    .getJSONObject("contents")
-                    .getJSONObject("twoColumnWatchNextResults")
-                    .getJSONObject("secondaryResults")
-                    .getJSONObject("secondaryResults")
-                    .getJSONArray("results");
+		.getJSONObject("contents")
+		.getJSONObject("twoColumnWatchNextResults")
+		.getJSONObject("secondaryResults")
+		.getJSONObject("secondaryResults")
+		.getJSONArray("results");
 
             for(int i=0;i<results.length();i++) {
                 JSONObject _result = results.getJSONObject(i);
+		JSONObject _compactVideoRenderer = _result.optJSONObject("compactVideoRenderer");
+		if(_compactVideoRenderer != null) {
+		    result.put(_compactVideoRenderer);
+		}
                 JSONObject itemSectionRenderer = _result.optJSONObject("itemSectionRenderer");
                 if(itemSectionRenderer == null) {
                     continue;
@@ -221,7 +304,7 @@ public class Youtube {
                 for(int j=0;j<contents.length();j++) {
                     JSONObject content = contents.optJSONObject(j);
                     JSONObject compactVideoRenderer = content
-                            .optJSONObject("compactVideoRenderer");
+			.optJSONObject("compactVideoRenderer");
                     if(compactVideoRenderer == null) {
                         continue;
                     }
@@ -250,6 +333,29 @@ public class Youtube {
             closeEngine(engine);
             engine = 0;
         }
+    }
+
+    public static final MediaBrowserCompat.MediaItem toMediaItem(final String id) {
+        if(id == null) {
+            return null;
+        }
+
+        final JSONObject videoInfo = getInfo(id);
+        if(videoInfo == null) {
+            return null;
+        }
+
+        final Bundle songDuration = new Bundle();
+        songDuration.putLong(MediaMetadata.METADATA_KEY_DURATION, Long.parseLong(videoInfo.optString("lengthSeconds")));
+        return new MediaBrowserCompat.MediaItem(
+                new MediaDescriptionCompat.Builder()
+                        .setMediaId(id)
+                        .setTitle(videoInfo.optString("title"))
+                        .setSubtitle(videoInfo.optString("author"))
+                        .setDescription("")
+                        .setExtras(songDuration)
+                        .build(),
+                MediaBrowserCompat.MediaItem.FLAG_PLAYABLE);
     }
 
     private static final native long initEngine();
@@ -290,7 +396,7 @@ public class Youtube {
 
     private static List<String> match(final String response, final String pattern) {
         Matcher matcher =
-                Pattern.compile(pattern).matcher(response);
+	    Pattern.compile(pattern).matcher(response);
 
         List<String> matches = new ArrayList<>();
         while (matcher.find()) {
@@ -326,6 +432,23 @@ public class Youtube {
         }
     }
 
+    private static JSONObject getInitialPlayerData2(final String response) {
+	List<String> matches = match(response, "ytInitialData = (.*)\\}\\}\\};");
+
+        if (matches == null) {
+            return null;
+        }
+
+        JSONObject json;
+        try {
+            json = new JSONObject(concat(matches.get(1), "}}}"));
+        } catch (Exception e) {
+            json = null;
+        }
+
+	return json;
+    }
+
     private static JSONObject getInitialPlayerData(final String response) {
         if(response == null) {
             return null;
@@ -357,7 +480,7 @@ public class Youtube {
             return null;
         }
 
-        if (id.equals(lastId)) {
+        if (id.equals(lastId) && lastPlayerResponse != null) {
             return new Pair<>(lastPlayerResponse, lastResponse);
         }
 
@@ -437,8 +560,8 @@ public class Youtube {
             String signature = Req.decode(params.get("s"));
 
             String expr = concat("\"use-strict\";",
-                    varDeclaresMatches.get(1),
-                    "(", decodeFunction, ")(\"", signature, "\");");
+				 varDeclaresMatches.get(1),
+				 "(", decodeFunction, ")(\"", signature, "\");");
 
             String val = runScript(expr, engine);
             String script = concat("encodeURIComponent(\"", val, "\")");
@@ -494,44 +617,44 @@ public class Youtube {
         int itag = format.getInt("itag");
 
         builder.append("\t\t\t<Representation id=\"")
-                .append(itag)
-                .append("\" mimeType=\"")
-                .append(mime)
-                .append("\" codecs=\"")
-                .append(codec)
-                .append("\" width=\"")
-                .append(width)
-                .append("\" height=\"")
-                .append(height)
-                .append("\" frameRate=\"")
-                .append(fps)
-                .append("\" maxPlayoutRate=\"1\" bandwidth=\"")
-                .append(bitRate)
-                .append("\">\n");
+	    .append(itag)
+	    .append("\" mimeType=\"")
+	    .append(mime)
+	    .append("\" codecs=\"")
+	    .append(codec)
+	    .append("\" width=\"")
+	    .append(width)
+	    .append("\" height=\"")
+	    .append(height)
+	    .append("\" frameRate=\"")
+	    .append(fps)
+	    .append("\" maxPlayoutRate=\"1\" bandwidth=\"")
+	    .append(bitRate)
+	    .append("\">\n");
 
         builder.append("\t\t\t\t<BaseURL>")
-                .append(format.getString("url"))
-                .append("</BaseURL>\n");
+	    .append(format.getString("url"))
+	    .append("</BaseURL>\n");
 
         JSONObject indexRange = format.getJSONObject("indexRange");
         int indexRangeStart = indexRange.getInt("start");
         int indexRangeEnd = indexRange.getInt("end");
 
         builder.append("\t\t\t\t<SegmentBase indexRange=\"")
-                .append(indexRangeStart)
-                .append("-")
-                .append(indexRangeEnd)
-                .append("\">\n");
+	    .append(indexRangeStart)
+	    .append("-")
+	    .append(indexRangeEnd)
+	    .append("\">\n");
         JSONObject initRange = format.getJSONObject("initRange");
         int initRangeStart = initRange.getInt("start");
         int initRangeEnd = initRange.getInt("end");
 
 
         builder.append("\t\t\t\t\t<Initialization range=\"")
-                .append(initRangeStart)
-                .append("-")
-                .append(initRangeEnd)
-                .append("\"/>\n");
+	    .append(initRangeStart)
+	    .append("-")
+	    .append(initRangeEnd)
+	    .append("\"/>\n");
 
         builder.append("\t\t\t\t</SegmentBase>\n");
 
@@ -553,42 +676,42 @@ public class Youtube {
         //if(mime.indexOf("mp4")!=-1) return;
 
         builder.append("\t\t\t<Representation id=\"")
-                .append(itag)
-                .append("\" mimeType=\"")
-                .append(mime)
-                .append("\" codecs=\"")
-                .append(codec)
-                .append("\" audioSamplingRate=\"")
-                .append(audioSamplingRate)
-                .append("\" bandwidth=\"")
-                .append(bitRate)
-                .append("\" maxPlayoutRate=\"1\">\n");
+	    .append(itag)
+	    .append("\" mimeType=\"")
+	    .append(mime)
+	    .append("\" codecs=\"")
+	    .append(codec)
+	    .append("\" audioSamplingRate=\"")
+	    .append(audioSamplingRate)
+	    .append("\" bandwidth=\"")
+	    .append(bitRate)
+	    .append("\" maxPlayoutRate=\"1\">\n");
 
         builder.append("\t\t\t\t<AudioChannelConfiguration schemeIdUri=\"urn:mpeg:dash:23003:3:audio_channel_configuration:2011\" value=\"2\"/>\n");
 
         builder.append("\t\t\t\t<BaseURL>")
-                .append(format.getString("url"))
-                .append("</BaseURL>\n");
+	    .append(format.getString("url"))
+	    .append("</BaseURL>\n");
 
         JSONObject indexRange = format.getJSONObject("indexRange");
         int indexRangeStart = indexRange.getInt("start");
         int indexRangeEnd = indexRange.getInt("end");
 
         builder.append("\t\t\t\t<SegmentBase indexRange=\"")
-                .append(indexRangeStart)
-                .append("-")
-                .append(indexRangeEnd)
-                .append("\">\n");
+	    .append(indexRangeStart)
+	    .append("-")
+	    .append(indexRangeEnd)
+	    .append("\">\n");
 
         JSONObject initRange = format.getJSONObject("initRange");
         int initRangeStart = initRange.getInt("start");
         int initRangeEnd = initRange.getInt("end");
 
         builder.append("\t\t\t\t\t<Initialization range=\"")
-                .append(initRangeStart)
-                .append("-")
-                .append(initRangeEnd)
-                .append("\"/>\n");
+	    .append(initRangeStart)
+	    .append("-")
+	    .append(initRangeEnd)
+	    .append("\"/>\n");
 
         builder.append("\t\t\t\t</SegmentBase>\n");
 
@@ -624,30 +747,30 @@ public class Youtube {
         int lenSec = _lenSec - lenMin * 60; //
 
         String mediaPresentation = new StringBuilder("PT")
-                .append(lenHr)
-                .append("H")
-                .append(lenMin)
-                .append("M")
-                .append(lenSec)
-                .append(".00S").toString();
+	    .append(lenHr)
+	    .append("H")
+	    .append(lenMin)
+	    .append("M")
+	    .append(lenSec)
+	    .append(".00S").toString();
 
         //minBufferTime=\"PT1.500000S\"
         builder.append("<?xml version=\"1.0\"?>\n<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:sand=\"urn:mpeg:dash:schema:sand:2016\" xsi:schemaLocation=\"urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd urn:mpeg:dash:schema:sand:2016 SAND-MPD.xsd\" minBufferTime=\"PT1.500000S\" type=\"static\" mediaPresentationDuration=\"")
-                .append(mediaPresentation)
-                .append("\" >\n");
+	    .append(mediaPresentation)
+	    .append("\" >\n");
         builder.append("\t<BaseURL></BaseURL>\n\n");
         builder.append("\t<Period id=\"\" start =\"0\" duration=\"")
-                .append(mediaPresentation)
-                .append("\">\n");
+	    .append(mediaPresentation)
+	    .append("\">\n");
 
         //VIDEO2
         builder.append("\t\t<AdaptationSet segmentAlignment=\"true\" maxWidth=\"")
-                .append(best.getInt("width"))
-                .append("\" startsWithSAP=\"1\" maxHeight=\"")
-                .append(best.getInt("height"))
-                .append("\" maxFrameRate=\"")
-                .append(best.getInt("fps"))
-                .append("\" par=\"16:9\" subsegmentStartsWithSAP=\"1\" scanType=\"progressive\">\n");
+	    .append(best.getInt("width"))
+	    .append("\" startsWithSAP=\"1\" maxHeight=\"")
+	    .append(best.getInt("height"))
+	    .append("\" maxFrameRate=\"")
+	    .append(best.getInt("fps"))
+	    .append("\" par=\"16:9\" subsegmentStartsWithSAP=\"1\" scanType=\"progressive\">\n");
 
         for (int i = 0; i < formats.length(); i++) {
             buildVideo(builder, formats.getJSONObject(i));
@@ -657,7 +780,7 @@ public class Youtube {
         //AUDIO
 
         builder.append("\t\t<AdaptationSet segmentAlignment=\"true\" startsWithSAP=\"1\"")
-                .append(" scanType=\"progressive\" >\n");
+	    .append(" scanType=\"progressive\" >\n");
 
         for (int i = 0; i < formats.length(); i++) {
             buildAudio(builder, formats.getJSONObject(i));
@@ -668,10 +791,10 @@ public class Youtube {
         builder.append("\t</Period>\n\n\n");
 
         builder.append("\t<Metrics metrics=\"BufferLevel\">\n")
-                .append("\t\t<Reporting schemeIdUri=\"urn:mpeg:dash:sand:channel:2016\" value=\"channel-reporting\"/>\n")
-                .append("\t\t<Range duration=\"PT5S\"/>\n")
-                .append("\t</Metrics>\n")
-                .append("\t<sand:Channel id=\"channel-reporting\" schemeIdUri=\"urn:mpeg:dash:sand:channel:http:2016\" endpoint=\"https://sand-http-test-dane.herokuapp.com/metrics\"/>\n");
+	    .append("\t\t<Reporting schemeIdUri=\"urn:mpeg:dash:sand:channel:2016\" value=\"channel-reporting\"/>\n")
+	    .append("\t\t<Range duration=\"PT5S\"/>\n")
+	    .append("\t</Metrics>\n")
+	    .append("\t<sand:Channel id=\"channel-reporting\" schemeIdUri=\"urn:mpeg:dash:sand:channel:http:2016\" endpoint=\"https://sand-http-test-dane.herokuapp.com/metrics\"/>\n");
 
         builder.append("</MPD>");
 
@@ -735,7 +858,7 @@ public class Youtube {
         final String title = info.optString("title");
         if(title == null || title.length() == 0) return null;
         return title
-                .replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+	    .replaceAll("[^a-zA-Z0-9-_\\.]", "_");
     }
 
     //[fileTitle, filePath]
@@ -767,9 +890,9 @@ public class Youtube {
         String mime = mimeParts[mimeParts.length - 1];
 
         return concat(video ? "_video" : "", ".",
-                video
-                        ? (("webm".equals(mime)) ? "webm" : "mp4")
-                        : (("webm".equals(mime)) ? "webm" : "m4a"));
+		      video
+		      ? (("webm".equals(mime)) ? "webm" : "mp4")
+		      : (("webm".equals(mime)) ? "webm" : "m4a"));
     }
 
     public static boolean isVideoFormat(final JSONObject format) {

@@ -263,7 +263,6 @@ public class JexoPlayerView extends StyledPlayerView {
         public SettingViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View v = LayoutInflater.from(getContext()).inflate(R.layout.exo_styled_settings_list_item, null);
             SettingViewHolder holder = new SettingViewHolder(v);
-
             return holder;
         }
 
@@ -321,10 +320,10 @@ public class JexoPlayerView extends StyledPlayerView {
 
         titleView = findViewById(R.id.titleView);
         authorView = findViewById(R.id.authorView);
-	backButton = findViewById(R.id.backButton);
-	upperLayout = findViewById(R.id.upperLayout);
+	    backButton = findViewById(R.id.backButton);
+	    upperLayout = findViewById(R.id.upperLayout);
         fullscreenButton = findViewById(R.id.custom_fullscreen);
-	backButton.setColorFilter(0xffffffff);
+	    backButton.setColorFilter(0xffffffff);
         fullscreenButton.setColorFilter(0xffffffff);
 
 	backButton.setOnClickListener(new View.OnClickListener(){

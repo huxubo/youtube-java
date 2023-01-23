@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/startFragment">
+
+    <fragment
+        android:id="@+id/startFragment"
+        android:name="com.jschartner.youtube.StartFragment"
+        android:label="fragment_start"
+        tools:layout="@layout/fragment_start" >
+        <action
+            android:id="@+id/action_startFragment_to_playerFragment"
+            app:destination="@id/playerFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/playerFragment"
+        android:name="com.jschartner.youtube.PlayerFragment"
+        android:label="fragment_player"
+        tools:layout="@layout/fragment_player" >
+        <action
+            android:id="@+id/action_playerFragment_to_fullscreenPlayerFragment3"
+            app:destination="@id/fullscreenPlayerFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/fullscreenPlayerFragment"
+        android:name="com.jschartner.youtube.FullscreenPlayerFragment"
+        android:label="fragment_fullscreen_player"
+        tools:layout="@layout/fragment_fullscreen_player" >
+        <action
+            android:id="@+id/action_fullscreenPlayerFragment_to_startFragment"
+            app:destination="@id/startFragment"
+            app:popUpTo="@id/startFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+</navigation>

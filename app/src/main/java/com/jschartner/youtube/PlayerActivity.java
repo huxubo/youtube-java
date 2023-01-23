@@ -1,5 +1,7 @@
 package com.jschartner.youtube;
 
+import static js.Io.concat;
+
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -29,8 +31,21 @@ public class PlayerActivity extends AppCompatActivity {
 
     private TextView titleView;
 
-    private ListView listView;
+    private static ListView listView;
     private static ResultAdapter resultAdapter;
+
+    static boolean active = false;
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        active = true;
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+    }
 
     @Override
     public void onResume() {
@@ -38,53 +53,43 @@ public class PlayerActivity extends AppCompatActivity {
         jexoPlayer = Utils.getJexoPlayer(this);
         jexoPlayerView.setPlayer(jexoPlayer);
 
-        boolean videoInfoWasNull = videoInfo == null;
-
         Intent intent = getIntent();
-        if(intent == null) {
+        if (intent == null) {
             return;
         }
         String id = intent.getStringExtra("id");
-        if (id != null) {
-            videoInfo = Youtube.getInfo(id);
-        }
-        if(videoInfo == null) {
-            return;
-        }
+        load(id);
 
-        if(titleView != null) {
-            titleView.setText(videoInfo.optString("title"));
+        if (videoInfo != null) {
+            init();
         }
+    }
 
-        if(videoInfoWasNull) {
-            final String videoId = videoInfo.optString("videoId");
-            resultAdapter.refresh(Youtube.getRecommendedVideos(videoId));
-        }
+    private void init() {
+        titleView.setText(videoInfo.optString("title"));
     }
 
     public static void flush() {
         videoInfo = null;
     }
 
-    private void load(String id) {
-        if(id == null) {
+    public static void load(String id) {
+        if (id == null) {
             return;
         }
         boolean videoInfoWasNull = videoInfo == null;
 
         videoInfo = Youtube.getInfo(id);
 
-        if(videoInfo == null) {
+        if (videoInfo == null) {
             return;
         }
 
-        if(titleView != null) {
-            titleView.setText(videoInfo.optString("title"));
+        if (resultAdapter != null && videoInfoWasNull) {
+            resultAdapter.refresh(Youtube.getRecommendedVideos(id));
         }
-
-        if(videoInfoWasNull) {
-            final String videoId = videoInfo.optString("videoId");
-            resultAdapter.refresh(Youtube.getRecommendedVideos(videoId));
+        if (listView != null) {
+            listView.setSelectionFromTop(0, 0);
         }
     }
 
@@ -96,16 +101,16 @@ public class PlayerActivity extends AppCompatActivity {
 
     private static class ResultAdapter extends ArrayAdapter<JSONObject> {
         private Bitmap[] videoBitmaps;
-        private MainActivity.DownloadImageTask[] videoTasks;
+        private MainActivity2.DownloadImageTask[] videoTasks;
         private Bitmap[] channelBitmaps;
-        private MainActivity.DownloadImageTask[] channelTasks;
+        private MainActivity2.DownloadImageTask[] channelTasks;
 
         public ResultAdapter(@NonNull Context context, int resource) {
             super(context, resource);
             videoBitmaps = new Bitmap[0];
-            videoTasks = new MainActivity.DownloadImageTask[0];
+            videoTasks = new MainActivity2.DownloadImageTask[0];
             channelBitmaps = new Bitmap[0];
-            channelTasks = new MainActivity.DownloadImageTask[0];
+            channelTasks = new MainActivity2.DownloadImageTask[0];
         }
 
         interface OnItemClickedListener {
@@ -123,10 +128,10 @@ public class PlayerActivity extends AppCompatActivity {
             clear();
 
             videoBitmaps = new Bitmap[result.length()];
-            videoTasks = new MainActivity.DownloadImageTask[result.length()];
+            videoTasks = new MainActivity2.DownloadImageTask[result.length()];
 
             channelBitmaps = new Bitmap[result.length()];
-            channelTasks = new MainActivity.DownloadImageTask[result.length()];
+            channelTasks = new MainActivity2.DownloadImageTask[result.length()];
             for (int i = 0; i < result.length(); i++) {
                 JSONObject json = result.optJSONObject(i);
                 if (json == null) continue;
@@ -153,12 +158,12 @@ public class PlayerActivity extends AppCompatActivity {
                 }
 
                 if (url != null) {
-                    videoTasks[i] = new MainActivity.DownloadImageTask(videoBitmaps, i);
+                    videoTasks[i] = new MainActivity2.DownloadImageTask(videoBitmaps, i, false);
                     videoTasks[i].execute(url);
                 }
 
                 if (channelUrl != null) {
-                    channelTasks[i] = new MainActivity.DownloadImageTask(channelBitmaps, i);
+                    channelTasks[i] = new MainActivity2.DownloadImageTask(channelBitmaps, i, true);
                     channelTasks[i].execute(channelUrl);
                 }
             }
@@ -174,10 +179,11 @@ public class PlayerActivity extends AppCompatActivity {
             ImageView iconView = rowView.findViewById(R.id.iconView);
             TextView authorView = rowView.findViewById(R.id.authorView);
             TextView durationView = rowView.findViewById(R.id.duration);
+            TextView publishedView = rowView.findViewById(R.id.publishedView);
 
             JSONObject json = getItem(position);
 
-            if(onContentClicked != null) {
+            if (onContentClicked != null) {
                 imageView.setOnClickListener((v) -> {
                     onContentClicked.onClick(v, position);
                 });
@@ -192,19 +198,40 @@ public class PlayerActivity extends AppCompatActivity {
             }
 
             try {
-                String channelText = json.getJSONObject("shortBylineText")
+                String viewText = null;
+                if (json.has("viewCountText")) {
+                    viewText = json.getJSONObject("viewCountText").optString("simpleText");
+                } else if (json.has("shortViewCountText")) {
+                    JSONObject shortViewCountText = json.getJSONObject("shortViewCountText");
+                    viewText = shortViewCountText.optString("simpleText");
+                }
+
+                String channelText = json.getJSONObject("longBylineText")
                         .getJSONArray("runs")
                         .getJSONObject(0)
                         .getString("text");
 
-                authorView.setText(channelText);
+                if (viewText != null && viewText.length() > 0) {
+                    authorView.setText(concat(channelText, " - ", viewText));
+                } else {
+                    authorView.setText(channelText);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            try {
+                String publishedString = json.optJSONObject("publishedTimeText")
+                        .optString("simpleText");
+
+                publishedView.setText(publishedString);
             } catch (Exception e) {
                 e.printStackTrace();
             }
 
             try {
                 String durationText = "LIVE";
-                if(json.has("lengthText")) {
+                if (json.has("lengthText")) {
                     durationText = json.getJSONObject("lengthText")
                             .getString("simpleText");
                 } else {
@@ -212,7 +239,7 @@ public class PlayerActivity extends AppCompatActivity {
                 }
                 durationView.setText(durationText);
                 durationView.setVisibility(View.VISIBLE);
-            } catch(Exception e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
 
@@ -244,7 +271,7 @@ public class PlayerActivity extends AppCompatActivity {
         titleView = findViewById(R.id.playerTitleView);
 
         listView = findViewById(R.id.recommendationsListView);
-        if(resultAdapter == null) {
+        if (resultAdapter == null) {
             resultAdapter = new ResultAdapter(this, R.layout.list_item);
         }
         listView.setAdapter(resultAdapter);
@@ -280,19 +307,21 @@ public class PlayerActivity extends AppCompatActivity {
         resultAdapter.setOnContentClicked((v, position) -> {
             final String videoId = resultAdapter.getItem(position).optString("videoId");
 
-            //TODO: extract that logic somewhere
-            boolean[] errorHappened = {false};
-            jexoPlayer.setOnPlayerError((error) -> {
-                if(errorHappened[0]) return;
-                errorHappened[0] = true;
-                Youtube.resetCache();
-                jexoPlayer.playFirst(Youtube.allSources(videoId));
-            });
-            jexoPlayer.playFirst(Youtube.allSources(videoId));
-
-            flush();
-            load(videoId);
-            listView.setSelectionAfterHeaderView();
+            Utils.playerLoop(jexoPlayer, videoId);
+            init();
         });
+
+        jexoPlayer = Utils.getJexoPlayer(this);
+
+        //================================================================================================        
+    }
+
+    @Override
+    public void onDestroy() {
+
+        active = false;
+        super.onDestroy();
     }
 }
+
+

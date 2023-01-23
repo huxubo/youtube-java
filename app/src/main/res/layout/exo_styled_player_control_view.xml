@@ -182,16 +182,19 @@
         android:layout_height="wrap_content"
         android:adjustViewBounds="true"
         android:scaleType="fitCenter"
-        android:maxWidth="16dp"
-        android:maxHeight="16dp"
-        android:minWidth="16dp"
-        android:minHeight="16dp"
-	android:translationZ="10dp"
-        android:layout_marginLeft="32dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginRight="32dp"
+        android:maxWidth="48dp"
+        android:maxHeight="48dp"
+        android:minWidth="48dp"
+        android:minHeight="48dp"
+  	   	android:translationZ="10dp"
+        android:layout_marginLeft="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginRight="16dp"
+	      android:padding="16dp"
         android:src="@drawable/arrow_down"
-        android:background="@android:color/transparent"/>
+		    android:background="@android:color/transparent"
+        />
+			<!-- android:background="@android:color/transparent" -->
 
     <LinearLayout android:layout_width="wrap_content"
         android:layout_height="wrap_content"

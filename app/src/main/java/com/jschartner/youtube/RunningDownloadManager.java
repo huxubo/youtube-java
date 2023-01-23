@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RunningDownloadManager {
-    private static final int BASE_NOTIFICATION_ID = 0;
+    private static final int BASE_NOTIFICATION_ID = 421;
     private static final int BASE_NOTIFICATION_ID_MAX = Integer.MAX_VALUE;
     private static final DecimalFormat dotTwo = new DecimalFormat("0.00");
 
@@ -87,7 +87,7 @@ public class RunningDownloadManager {
                         int progress = runningDownload.download.getProgress();
                         String progressString = contentLength == 0 ? "0" : dotTwo.format(100.0f * ((float) progress)/((float) contentLength));
                         long duration = runningDownload.download.duration();
-                        double speed = ((double) progress * 1000 / (double) duration * 8e-6) ;
+                        double speed = ((double) progress * 8 / (double) duration / 1000) ;
                         runningDownload.builder.setContentText(concat(progressString, "%", " - ", contentLengthString, " MB - ", dotTwo.format(speed), "MB/s"));
                         runningDownload.builder.setProgress(contentLength, progress, false);
                     }

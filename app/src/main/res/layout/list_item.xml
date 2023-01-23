@@ -64,7 +64,7 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="192px"
+        android:layout_height="256px"
         android:orientation="horizontal">
 
         <ImageView
@@ -83,18 +83,36 @@
 
             <TextView
                 android:id="@+id/textView"
-                android:layout_width="match_parent"
+	              android:textSize="18sp"
+	              android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-                android:textColor="@color/black" />
+	              android:inputType="textMultiLine"
+                android:textColor="@color/black"
+               	android:textIsSelectable="false"
+                android:singleLine="false"
+                android:editable="false"
+                android:maxLines="2"
+                android:lines="2" />
 
             <TextView
                 android:id="@+id/authorView"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
+                android:layout_gravity="left|top"
                 android:padding="1dp"
                 android:text="Hello, World"
+                android:textColor="@color/black"
+                android:textSize="12sp" />
+
+
+            <TextView
+                android:id="@+id/publishedView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="left|top"
+                android:padding="1dp"
+                android:text=""
                 android:textColor="@color/black"
                 android:textSize="12sp" />
         </LinearLayout>

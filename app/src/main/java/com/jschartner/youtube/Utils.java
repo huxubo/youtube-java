@@ -15,6 +15,10 @@ import android.widget.Toast;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import js.Req;
 
@@ -28,6 +32,7 @@ public class Utils {
         return jexoPlayer;
     }
 
+    /*
     public static void playerLoop(final JexoPlayer jexoPlayer, final String id) {
         boolean[] errorHappened = {false};
         jexoPlayer.setOnPlayerError((error) -> {
@@ -46,6 +51,21 @@ public class Utils {
 
         PlayerActivity.flush();
         PlayerActivity.load(id);
+    }
+     */
+
+    public static List<String> match(final String response, final String pattern) {
+        Matcher matcher =
+                Pattern.compile(pattern).matcher(response);
+
+        List<String> matches = new ArrayList<>();
+        while (matcher.find()) {
+            for (int i = 0; i <= matcher.groupCount(); i++) {
+                matches.add(matcher.group(i));
+            }
+        }
+
+        return matches.size() > 0 ? matches : null;
     }
 
     public static Req.Result onThread(final Req.Builder builder) {
@@ -89,7 +109,7 @@ public class Utils {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             CharSequence name = notificationChannelName;
             String description = notificationChannelDescription;
-            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            int importance = NotificationManager.IMPORTANCE_LOW;
             NotificationChannel channel = new NotificationChannel(channelId, name, importance);
             channel.setDescription(description);
             // Register the channel with the system; you can't change the importance

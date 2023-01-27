@@ -1,7 +1,12 @@
 package com.jschartner.youtube;
 
+import android.os.Build;
+
+import androidx.annotation.NonNull;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class History {
     private SearchFunction searchFunction;
@@ -9,7 +14,7 @@ public class History {
     private List<String> words;
 
     interface SearchFunction {
-        Object search(String argument);
+        void search(final String keyword, @NonNull final Consumer<Object> onThen);
     }
 
     public Object back() {
@@ -22,50 +27,32 @@ public class History {
         return n==1 ? null : results.get(n - 2);
     }
 
-    public Object searchLoop(String argument) throws RuntimeException {
-        Object result = null;
-        int i = 0;
-        for(;i<5;i++) {
-            result = search(argument);
-            if(result!=null) break;
-        }
-        if(i==5) throw new RuntimeException("Search with argument: "+argument+" failed in 5 searches");
-        return result;
+    public void search(String argument, @NonNull final Consumer<Object> onThen) {
+        searchFunction.search(argument, (result) -> {
+            if(result != null) {
+                results.add(result);
+                words.add(argument);
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                onThen.accept(result);
+            }
+        });
     }
 
-    public Object search(String argument) {
-        Object result = searchFunction.search(argument);
-
-        if(result != null) {
-            results.add(result);
-            words.add(argument);
-        }
-
-        return result;
-    }
-
-    public Object refreshLoop() throws RuntimeException {
-        Object result = null;
-        int i = 0;
-        for(;i<5;i++) {
-            result = refresh();
-            if(result!=null) break;
-        }
-        if(i==5) throw new RuntimeException("Refresh failed in 5 searches");
-        return result;
-    }
-
-    public Object refresh() {
+    public void refresh(@NonNull final Consumer<Object> onThen) {
         int n = words.size();
-        if(n==0) return null;
+        if(n==0) return;
 
-        Object result = searchFunction.search(words.get(n - 1));
+        searchFunction.search(words.get(n - 1), (result) -> {
+            if(result!=null) {
+                results.set(n - 1, result);
+            }
 
-        if(result!=null) {
-            results.set(n - 1, result);
-        }
-
-        return result;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                onThen.accept(result);
+            }
+        });
     }
 
     public History(SearchFunction searchFunction) {

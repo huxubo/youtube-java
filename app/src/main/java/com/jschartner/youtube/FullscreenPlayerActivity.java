@@ -33,7 +33,7 @@ public class FullscreenPlayerActivity extends AppCompatActivity {
         if (intent != null) {
             String id = intent.getStringExtra("id");
             if (id != null) {
-                videoInfo = Youtube.getInfo(id);
+                //videoInfo = Youtube.getInfo(id);
             }
         }
         if (videoInfo != null) {

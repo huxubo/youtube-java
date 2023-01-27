@@ -256,6 +256,11 @@ public class ResultAdapter extends ArrayAdapter<JSONObject> {
         }
     }
 
+    public void free() {
+        clear();
+        notifyDataSetChanged();
+    }
+
     public void refresh(final JSONArray result) {
         if (result == null) return;
         clear();

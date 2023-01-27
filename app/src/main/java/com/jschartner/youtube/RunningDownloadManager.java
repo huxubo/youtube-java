@@ -87,7 +87,7 @@ public class RunningDownloadManager {
                         int progress = runningDownload.download.getProgress();
                         String progressString = contentLength == 0 ? "0" : dotTwo.format(100.0f * ((float) progress)/((float) contentLength));
                         long duration = runningDownload.download.duration();
-                        double speed = ((double) progress * 8 / (double) duration / 1000) ;
+                        double speed = ((double) progress * 8 / (double) duration / 10000) ;
                         runningDownload.builder.setContentText(concat(progressString, "%", " - ", contentLengthString, " MB - ", dotTwo.format(speed), "MB/s"));
                         runningDownload.builder.setProgress(contentLength, progress, false);
                     }

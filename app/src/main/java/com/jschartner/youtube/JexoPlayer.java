@@ -490,7 +490,9 @@ public class JexoPlayer extends BroadcastReceiver {
 
     public boolean playFirst(Iterator<String> iterator, MediaBrowserCompat.MediaItem mediaItem) {
         while (iterator.hasNext()) {
-            if (play(iterator.next())) {
+            final String next = iterator.next();
+            if(next == null) continue;
+            if (play(next)) {
                 if (mediaItem != null && isConnected()) {
                     MediaService.setMediaItems(Arrays.asList(mediaItem));
                     mediaBrowser.unsubscribe(mediaBrowser.getRoot());
@@ -498,6 +500,34 @@ public class JexoPlayer extends BroadcastReceiver {
                 }
                 return true;
             }
+        }
+        return false;
+    }
+
+    public boolean play(String data, MediaBrowserCompat.MediaItem mediaItem) {
+        if (playDashSource(data)) {
+            if (mediaItem != null && isConnected()) {
+                MediaService.setMediaItems(Arrays.asList(mediaItem));
+                mediaBrowser.unsubscribe(mediaBrowser.getRoot());
+                mediaBrowser.subscribe(mediaBrowser.getRoot(), mediaBrowserCallback);
+            }
+            return true;
+        }
+        if (data != null && data.contains(".m3u8") && playM3u8(data)) {
+            if (mediaItem != null && isConnected()) {
+                MediaService.setMediaItems(Arrays.asList(mediaItem));
+                mediaBrowser.unsubscribe(mediaBrowser.getRoot());
+                mediaBrowser.subscribe(mediaBrowser.getRoot(), mediaBrowserCallback);
+            }
+            return true;
+        }
+        if (playDash(data)) {
+            if (mediaItem != null && isConnected()) {
+                MediaService.setMediaItems(Arrays.asList(mediaItem));
+                mediaBrowser.unsubscribe(mediaBrowser.getRoot());
+                mediaBrowser.subscribe(mediaBrowser.getRoot(), mediaBrowserCallback);
+            }
+            return true;
         }
         return false;
     }
@@ -603,6 +633,7 @@ public class JexoPlayer extends BroadcastReceiver {
             return false;
         }
 
+
         staticReceivePlayer = this;
 
         MediaSessionCompat mediaSession = new MediaSessionCompat(context, mediaBrowserServiceCompatClassName);
@@ -638,7 +669,7 @@ public class JexoPlayer extends BroadcastReceiver {
         this.notificationIntent = new Intent(context, JexoPlayer.class);
         this.notificationIntent.putExtra(NOTIFICATION_ACTION_TYPE, NOTIFICATION_ACTION_TYPE_PLAY_PAUSE);
         this.notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        this.notification = new NotificationCompat.Builder(context, MainActivity2.CHANNEL_ID)
+        this.notification = new NotificationCompat.Builder(context, channelId)
                 .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
                         .setMediaSession(mediaSession.getSessionToken())
                         .setShowCancelButton(true)
@@ -649,7 +680,6 @@ public class JexoPlayer extends BroadcastReceiver {
                 .addAction(new NotificationCompat.Action(R.drawable.pause, "play_pause", PendingIntent.getBroadcast(context, 1,
                         this.notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE)))
                 .addAction(new NotificationCompat.Action(R.drawable.next, "next", nextPendingIntent))
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
                 .setContentTitle(description.getTitle())
                 .setContentText(description.getSubtitle())
@@ -657,6 +687,7 @@ public class JexoPlayer extends BroadcastReceiver {
 
                 .setContentIntent(contentPendingIntent)
                 .setSmallIcon(R.mipmap.ic_launcher_foreground);
+        this.notification.setDefaults(0);
         this.notificationId = notificationId;
 
         return true;

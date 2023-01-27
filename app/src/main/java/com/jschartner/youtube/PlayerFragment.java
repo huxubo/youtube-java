@@ -72,6 +72,7 @@ public class PlayerFragment extends Fragment {
             getMainActivity().playVideo(videoId);
             listView.setSelectionFromTop(0, 0);
         });
+
         jexoPlayerView.setOnTouchListener(new OnSwipeTouchListener(getActivity()){
             @Override
             public void onSwipeBottom() {

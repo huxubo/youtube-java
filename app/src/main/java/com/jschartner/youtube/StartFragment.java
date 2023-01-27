@@ -1,7 +1,6 @@
 package com.jschartner.youtube;
 
 import static android.content.Context.LAYOUT_INFLATER_SERVICE;
-
 import static js.Io.concat;
 
 import android.content.pm.ActivityInfo;
@@ -37,7 +36,6 @@ import com.google.android.material.textfield.TextInputEditText;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -127,7 +125,7 @@ public class StartFragment extends Fragment {
                 if(length == null) continue;
                 if(name == null) continue;
                 names.add(name);
-                lengths.add(length.longValue()  * 8 / 1000000);
+                lengths.add(length.longValue()  / 1000000);
                 slots.add(i);
             }
             this.onSelected = onSelected;
@@ -164,6 +162,46 @@ public class StartFragment extends Fragment {
         }
     }
 
+    private class Selection {
+        protected int format;
+        protected boolean video;
+
+        public Selection() {
+            format = 0;
+            video = true;
+        }
+
+        public String getFormatText(final JSONArray formats) {
+            if(formats == null) {
+                return null;
+            }
+
+            if(formats.length()<format) {
+                return null;
+            }
+            JSONObject format = formats.optJSONObject(this.format);
+
+            if(video) {
+                return JexoFormat.map(format.optInt("width"));
+            } else {
+                return concat(format.optInt("averageBitrate") / 1000, "kbps");
+            }
+        }
+
+        public String getSizeText(final JSONArray formats) {
+            if(formats == null) {
+                return null;
+            }
+
+            if(formats.length()<format) {
+                return null;
+            }
+
+            JSONObject format = formats.optJSONObject(this.format);
+            return concat(format.optLong("lengthInBytes") / 1000000, "MB");
+        }
+    }
+
     public void popupWindow(final View view, final String id) {
 
         final String downloadFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).toString();
@@ -176,32 +214,28 @@ public class StartFragment extends Fragment {
         PopupWindow recyclerWindow = new PopupWindow(recyclerView, FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, true);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        final JSONArray formats = Youtube.getFormats(id);
-        int[] selectedFormat = {0};
-        boolean[] selectedVideo = {true};
-
-        final String title = Youtube.getTitle(id);
-
+        final String title = "TITLE";//Youtube.getTitle(id);
         Button okButton = popupView.findViewById(R.id.okButton);
-
 
         Button qualityButton = popupView.findViewById(R.id.qualityButton);
         TextView qualityText = popupView.findViewById(R.id.qualityText);
 
-        QualityAdapter[] adapter = new QualityAdapter[]{new QualityAdapter(selectedVideo[0], formats, (pos) -> {
-            recyclerWindow.dismiss();
-            selectedFormat[0] = pos;
+        final JSONArray formats = new JSONArray(); //Youtube.getFormats(id);
 
-            qualityText.setText(selectedVideo[0]
-                    ? JexoFormat.map((formats.optJSONObject(selectedFormat[0]).optInt("width")))
-                    : (String.valueOf(formats.optJSONObject(selectedFormat[0]).optInt("averageBitrate") / 1000) + "kbps"));
-            qualityButton.setText(String.valueOf(formats.optJSONObject(selectedFormat[0]).optLong("lengthInBytes") / 1000000) + "MB");
+        Selection selection = new Selection();
+        Runnable updateSelection = () -> {
+            qualityText.setText(selection.getFormatText(formats));
+            qualityButton.setText(selection.getSizeText(formats));
+        };
+
+        QualityAdapter[] adapter = new QualityAdapter[]{new QualityAdapter(selection.video, formats, (pos) -> {
+            recyclerWindow.dismiss();
+            selection.format = pos;
+
+            updateSelection.run();
         })};
-        selectedFormat[0] = adapter[0].getFirstSlot();
-        qualityText.setText(selectedVideo[0]
-                ? JexoFormat.map((formats.optJSONObject(selectedFormat[0]).optInt("width")))
-                : (String.valueOf(formats.optJSONObject(selectedFormat[0]).optInt("averageBitrate")/1000) + "kbps"));
-        qualityButton.setText(String.valueOf(formats.optJSONObject(selectedFormat[0]).optLong("lengthInBytes")/1000000)+"MB");
+        selection.format = adapter[0].getFirstSlot();
+        updateSelection.run();
 
         qualityButton.setOnClickListener((v) -> {
             recyclerView.setAdapter(adapter[0]);
@@ -219,46 +253,35 @@ public class StartFragment extends Fragment {
         videoSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                selectedVideo[0] = isChecked;
+                selection.video = isChecked;
                 audioSwitch.setChecked(!isChecked);
 
-                adapter[0] = new QualityAdapter(selectedVideo[0], formats, (pos) -> {
+                adapter[0] = new QualityAdapter(selection.video, formats, (pos) -> {
                     recyclerWindow.dismiss();
-                    selectedFormat[0] = pos;
+                    selection.format = pos;
 
-                    qualityText.setText(selectedVideo[0]
-                            ? JexoFormat.map((formats.optJSONObject(selectedFormat[0]).optInt("width")))
-                            : (String.valueOf(formats.optJSONObject(selectedFormat[0]).optInt("averageBitrate")/1000) + "kbps"));
-                    qualityButton.setText(String.valueOf(formats.optJSONObject(selectedFormat[0]).optLong("lengthInBytes")/1000000)+"MB");
+                    updateSelection.run();
                 });
-                selectedFormat[0] = adapter[0].getFirstSlot();
-                qualityText.setText(selectedVideo[0]
-                        ? JexoFormat.map((formats.optJSONObject(selectedFormat[0]).optInt("width")))
-                        : (String.valueOf(formats.optJSONObject(selectedFormat[0]).optInt("averageBitrate")/1000) + "kbps"));
-                qualityButton.setText(String.valueOf(formats.optJSONObject(selectedFormat[0]).optLong("lengthInBytes")/1000000)+"MB");
+                selection.format = adapter[0].getFirstSlot();
+                updateSelection.run();
             }
         });
 
         audioSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                selectedVideo[0] = !isChecked;
+                selection.video = !isChecked;
                 videoSwitch.setChecked(!isChecked);
 
-                adapter[0] = new QualityAdapter(selectedVideo[0], formats, (pos) -> {
+                adapter[0] = new QualityAdapter(selection.video, formats, (pos) -> {
                     recyclerWindow.dismiss();
-                    selectedFormat[0] = pos;
+                    selection.format = pos;
 
-                    qualityText.setText(selectedVideo[0]
-                            ? JexoFormat.map((formats.optJSONObject(selectedFormat[0]).optInt("width")))
-                            : (String.valueOf(formats.optJSONObject(selectedFormat[0]).optInt("averageBitrate")/1000) + "kbps"));
-                    qualityButton.setText(String.valueOf(formats.optJSONObject(selectedFormat[0]).optLong("lengthInBytes")/1000000)+"MB");
+                    updateSelection.run();
                 });
-                selectedFormat[0] = adapter[0].getFirstSlot();
-                qualityText.setText(selectedVideo[0]
-                        ? JexoFormat.map((formats.optJSONObject(selectedFormat[0]).optInt("width")))
-                        : (String.valueOf(formats.optJSONObject(selectedFormat[0]).optInt("averageBitrate")/1000) + "kbps"));
-                qualityButton.setText(String.valueOf(formats.optJSONObject(selectedFormat[0]).optLong("lengthInBytes")/1000000)+"MB");
+
+                selection.format = adapter[0].getFirstSlot();
+                updateSelection.run();
             }
         });
 
@@ -275,8 +298,9 @@ public class StartFragment extends Fragment {
         });
 
         okButton.setOnClickListener((v) -> {
-            if(selectedVideo[0]) {
-                JSONObject videoFormat = formats.optJSONObject(selectedFormat[0]);
+            /*
+            if(selection.video) {
+                JSONObject videoFormat = formats.optJSONObject(selection.format);
                 final String[] videoNames = Youtube.getNames(videoFormat, title, downloadFolder);
                 if (videoNames == null) return;
 
@@ -317,11 +341,11 @@ public class StartFragment extends Fragment {
 
                 popupWindow.dismiss();
             } else {
-                JSONObject format = formats.optJSONObject(selectedFormat[0]);
+                JSONObject format = formats.optJSONObject(selection.format);
                 final String[] fileNames = Youtube.getNames(format, title, downloadFolder);
                 final String fileTitle = fileNames[1];
 
-                getMainActivity().downloadManager.download(formats.optJSONObject(selectedFormat[0]).optString("url"), fileTitle, fileNames[1], () -> {
+                getMainActivity().downloadManager.download(formats.optJSONObject(selection.format).optString("url"), concat(title, Youtube.getSuffix(format)), fileNames[1], () -> {
                     getActivity().runOnUiThread(() -> Utils.toast(getActivity(), "Download Finished"));
                 }, () -> {
                     getActivity().runOnUiThread(() -> Utils.toast(getActivity(), "Download failed"));
@@ -329,6 +353,8 @@ public class StartFragment extends Fragment {
 
                 popupWindow.dismiss();
             }
+
+             */
         });
     }
 
@@ -349,7 +375,10 @@ public class StartFragment extends Fragment {
         //View
         SwipeRefreshLayout swipeLayout = view.findViewById(R.id.swipeLayout);
         swipeLayout.setOnRefreshListener(() -> {
-            resultAdapter.refresh((JSONArray) history.refreshLoop());
+            resultAdapter.free();
+            history.refresh((result) -> {
+                resultAdapter.refresh((JSONArray) result);
+            });
             swipeLayout.setRefreshing(false);
         });
 

@@ -11,8 +11,6 @@ import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.provider.Settings;
@@ -37,7 +35,6 @@ import com.google.android.exoplayer2.Player;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.File;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
 
@@ -323,6 +320,7 @@ public class MainActivity2 extends AppCompatActivity {
         startActivity(intent);
     }
 
+    /*
     public void startPlayer(final String id) {
         Utils.playerLoop(jexoPlayer, id);
         Intent intent = new Intent(this, PlayerActivity.class);
@@ -331,6 +329,8 @@ public class MainActivity2 extends AppCompatActivity {
         PlayerActivity.flush();
         startActivity(intent);
     }
+
+     */
 
     public void startFullscreenPlayer() {
         Intent intent = new Intent(getApplicationContext(), FullscreenPlayerActivity.class);
@@ -384,7 +384,7 @@ public class MainActivity2 extends AppCompatActivity {
             }
         }
 
-        history = new History(Youtube::search);
+        //history = new History(Youtube::search);
 
         downloadManager = new RunningDownloadManager(this, CHANNEL_ID);
         RunningDownload.setOnDownloadCanceledListener((notificationId) -> {
@@ -395,7 +395,7 @@ public class MainActivity2 extends AppCompatActivity {
 
         swipeLayout = findViewById(R.id.swipeLayout);
         swipeLayout.setOnRefreshListener(() -> {
-            resultAdapter.refresh((JSONArray) history.refreshLoop());
+            //resultAdapter.refresh((JSONArray) history.refreshLoop());
             swipeLayout.setRefreshing(false);
         });
 
@@ -405,21 +405,21 @@ public class MainActivity2 extends AppCompatActivity {
 
         resultAdapter.setOnDownloadClicked((v, position) -> {
             final String videoId = resultAdapter.getItem(position).optString("videoId");
-            downloadVideo(videoId);
+            //downloadVideo(videoId);
         });
 
         resultAdapter.setOnContentClicked((v, position) -> {
             final String videoId = resultAdapter.getItem(position).optString("videoId");
-            startPlayer(videoId);
+            //startPlayer(videoId);
         });
 
         resultAdapter.setOnItemLongClickListener((v, position) -> {
             vibrate();
             final String videoId = resultAdapter.getItem(position).optString("videoId");
-            downloadAudio(videoId);
+            //downloadAudio(videoId);
         });
 
-        resultAdapter.refresh((JSONArray) history.searchLoop(null));
+        //resultAdapter.refresh((JSONArray) history.searchLoop(null));
 
         //SEARCH
         jexoPlayerLayout = findViewById(R.id.playerLayout);
@@ -466,6 +466,7 @@ public class MainActivity2 extends AppCompatActivity {
         int audioBitrate = -1;
         for (int i = 0; i < formats.length(); i++) {
             JSONObject format = formats.optJSONObject(i);
+            /*
             if (Youtube.isVideoFormat(format) && format.has("width") && format.has("bitrate")) {
                 int width = format.optInt("width");
                 int bitRate = format.optInt("bitrate");
@@ -483,6 +484,8 @@ public class MainActivity2 extends AppCompatActivity {
                     audioPos = i;
                 }
             }
+
+             */
         }
 
         pos[0] = videoPos;
@@ -495,6 +498,7 @@ public class MainActivity2 extends AppCompatActivity {
         return true;
     }
 
+    /*
     private void downloadAudio(final String videoId) {
         final String title = Youtube.getTitle(videoId);
         if (title == null) return;
@@ -585,6 +589,8 @@ public class MainActivity2 extends AppCompatActivity {
         new Handler(Looper.getMainLooper()).postDelayed(() -> doubleBackToExitIsPressedOnce = false, 2000);
     }
 
+     */
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu, menu);
@@ -604,7 +610,7 @@ public class MainActivity2 extends AppCompatActivity {
 
                 swipeLayout.requestFocus();
 
-                resultAdapter.refresh((JSONArray) history.searchLoop(query));
+                //resultAdapter.refresh((JSONArray) history.searchLoop(query));
                 listView.setSelectionFromTop(0, 0);
 
                 return true;

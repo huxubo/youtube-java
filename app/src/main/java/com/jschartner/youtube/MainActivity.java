@@ -2,14 +2,19 @@ package com.jschartner.youtube;
 
 import static js.Io.concat;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.SearchView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import org.json.JSONArray;
+import org.json.JSONException;
+
+import java.util.Iterator;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -19,6 +24,7 @@ public class MainActivity extends AppCompatActivity {
     protected ResultAdapter recommendationAdapter;
     protected RunningDownloadManager downloadManager;
 
+    /*
     public void playVideo(final String id) {
         //PLAY VIDEO
         boolean[] errorHappened = {false};
@@ -39,6 +45,58 @@ public class MainActivity extends AppCompatActivity {
         //RECOMMENDATIONS
         recommendationAdapter.refresh(Youtube.getRecommendedVideos(id));
     }
+    */
+
+    public void playVideo(@NonNull final String id) {
+        Youtube.fetchFormatsAndVideoInfo(id, (formats, info) -> {
+            final String lengthString = info.optString("lengthSeconds");
+            if(lengthString == null) {
+                Utils.toast(this, "Can not find length in videoDetails");
+                return;
+            }
+
+            jexoPlayer.setOnPlayerError((error) -> {
+               playVideo(id);
+            });
+            jexoPlayer.playFirst(new Iterator<String>() {
+                int state = 0;
+
+                @Override
+                public boolean hasNext() {
+                    return state<3;
+                }
+
+                @Override
+                public String next() {
+                    switch(state++) {
+                        case 0:
+                            try {
+                                return Youtube.buildMpd(formats, Integer.parseInt(lengthString));
+                            }
+                            catch(final JSONException e) {
+                                return null;
+                            }
+                        case 1:
+                            try{
+                                return info.getString("hlsManifestUrl");
+                            } catch(final JSONException e) {
+                                return null;
+                            }
+                        case 2:
+                            try{
+                                return info.getString("dashManifestUrl");
+                            } catch(final JSONException e) {
+                                return null;
+                            }
+                        default:
+                            return null;
+                    }
+                }
+            }, Youtube.toMediaItem(id, info));
+        }, () -> {
+            Utils.toast(this, "Failed to fetch Formats");
+        });
+    }
 
     @Override
     public void onCreate(Bundle savedInstance) {
@@ -47,13 +105,18 @@ public class MainActivity extends AppCompatActivity {
 
         jexoPlayer = new JexoPlayer(this);
 
-
-        history = new History(Youtube::search);
+        history = new History((keyword, onThen) -> {
+            Youtube.fetchSearchResults(keyword, (results) -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    onThen.accept(results);
+                }
+            }, null);
+        });
         searchAdapter = new ResultAdapter(this, R.layout.list_item, false);
-        searchAdapter.refresh((JSONArray) history.searchLoop(null));
-
         recommendationAdapter = new ResultAdapter(this, R.layout.list_item, true);
-
+        history.search(null, (result) -> {
+            searchAdapter.refresh((JSONArray) result);
+        });
 
         final String CHANNEL_ID = "a";
         final String NOTIFICATION_CHANNEL_NAME = "b";
@@ -97,7 +160,11 @@ public class MainActivity extends AppCompatActivity {
 
                 //swipeLayout.requestFocus();
 
-                searchAdapter.refresh((JSONArray) history.searchLoop(query));
+                searchAdapter.free();
+                history.search(query, (result) -> {
+                    searchAdapter.refresh((JSONArray) result);
+                });
+
                 //listView.setSelectionFromTop(0, 0);
 
                 return true;

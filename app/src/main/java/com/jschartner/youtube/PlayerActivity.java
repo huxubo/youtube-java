@@ -79,14 +79,14 @@ public class PlayerActivity extends AppCompatActivity {
         }
         boolean videoInfoWasNull = videoInfo == null;
 
-        videoInfo = Youtube.getInfo(id);
+        //videoInfo = Youtube.getInfo(id);
 
         if (videoInfo == null) {
             return;
         }
 
         if (resultAdapter != null && videoInfoWasNull) {
-            resultAdapter.refresh(Youtube.getRecommendedVideos(id));
+            //resultAdapter.refresh(Youtube.getRecommendedVideos(id));
         }
         if (listView != null) {
             listView.setSelectionFromTop(0, 0);
@@ -307,7 +307,7 @@ public class PlayerActivity extends AppCompatActivity {
         resultAdapter.setOnContentClicked((v, position) -> {
             final String videoId = resultAdapter.getItem(position).optString("videoId");
 
-            Utils.playerLoop(jexoPlayer, videoId);
+            //Utils.playerLoop(jexoPlayer, videoId);
             init();
         });
 

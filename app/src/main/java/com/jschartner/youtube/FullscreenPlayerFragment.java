@@ -69,7 +69,7 @@ public class FullscreenPlayerFragment extends Fragment {
 
         JexoPlayer jexoPlayer = getMainActivity().jexoPlayer;
         jexoPlayerView = view.findViewById(R.id.player_view);
-        jexoPlayerView.setOnBackPressedListener(() -> {
+        jexoPlayerView.setOnBackPressedListener((_view) -> {
             Navigation.findNavController(view).popBackStack();
             Navigation.findNavController(view).popBackStack();
         });

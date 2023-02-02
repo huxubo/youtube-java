@@ -60,17 +60,20 @@ public class PlayerFragment extends Fragment {
         ResultAdapter resultAdapter = getMainActivity().recommendationAdapter;
 
         View view = inflater.inflate(R.layout.fragment_player, container, false);
-        jexoPlayerView = view.findViewById(R.id.player_view);
-        jexoPlayerView.setPlayer(jexoPlayer);
-        jexoPlayerView.setOnBackPressedListener(() -> {
-            Navigation.findNavController(view).popBackStack();
-        });
+
         ListView listView = view.findViewById(R.id.recommendationsListView);
         listView.setAdapter(resultAdapter);
         resultAdapter.setOnContentClicked((v, pos) -> {
             final String videoId = resultAdapter.getItem(pos).optString("videoId");
             getMainActivity().playVideo(videoId);
             listView.setSelectionFromTop(0, 0);
+        });
+
+        jexoPlayerView = view.findViewById(R.id.player_view);
+        jexoPlayerView.setPlayer(jexoPlayer);
+
+        jexoPlayerView.setOnBackPressedListener((_view) -> {
+            Navigation.findNavController(view).popBackStack();
         });
 
         jexoPlayerView.setOnTouchListener(new OnSwipeTouchListener(getActivity()){

@@ -13,12 +13,11 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.PopupWindow;
-import android.widget.Switch;
+import android.widget.RadioButton;
 import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
@@ -34,10 +33,16 @@ import com.google.android.exoplayer2.Player;
 import com.google.android.material.textfield.TextInputEditText;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import js.Req;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -68,10 +73,15 @@ public class StartFragment extends Fragment {
         return (MainActivity) getActivity();
     }
 
+    public void toast(final Object ...os) {
+        getMainActivity().toast(os);
+    }
+
     @Override
     public void onDestroyView() {
         super.onDestroyView();
         jexoPlayerView.setPlayer((Player) null);
+        getMainActivity().setOnRadioButtonClickedListener(null);
     }
 
     private class Quality extends RecyclerView.ViewHolder {
@@ -203,6 +213,53 @@ public class StartFragment extends Fragment {
     }
 
     public void popupWindow(final View view, final String id) {
+        toast("Fetching Video Formats ... ");
+
+        Youtube.fetchVideo(id, (bytes) -> {
+            final String response = Req.utf8(bytes);
+            Youtube.fetchFormatsAndVideoInfoFromResponse(response, (formats, info) -> {
+
+                AtomicInteger count = new AtomicInteger();
+
+                for(int i=0;i<formats.length();i++) {
+                    final JSONObject format = formats.optJSONObject(i);
+                    final String url = format.optString("url");
+                    if(url == null) {
+                        count.set(count.get() + 1);
+                        continue;
+                    }
+                    final int _i = i;
+
+                    Youtube.async(() -> {
+                        try{
+                            return Req.head(url);
+                        }
+                        catch(IOException e) {
+                            e.printStackTrace();
+                            return null;
+                        }
+                    }, (result) -> {
+
+                        try {
+                            format.put("lengthInBytes", result == null ? 0 : result.len);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+
+                        int current_count = count.get();
+                        if(current_count + 1 == formats.length()) {
+                            final String title = info.optString("title");
+                            popupWindow1(view, formats, title == null ? "youtube-video" : title);
+                        } else {
+                            count.set(current_count + 1);
+                        }
+                    });
+                }
+            }, () -> toast("Failed to fetch Video Formats"));
+        }, () -> toast("Failed to fetch Youtube"));
+    }
+
+    public void popupWindow1(final View view, final JSONArray formats, final String rawTitle) {
 
         final String downloadFolder = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).toString();
 
@@ -214,13 +271,11 @@ public class StartFragment extends Fragment {
         PopupWindow recyclerWindow = new PopupWindow(recyclerView, FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, true);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        final String title = "TITLE";//Youtube.getTitle(id);
+        final String title = rawTitle.replaceAll("[^a-zA-Z0-9-ä-ü_\\.]", "_");
         Button okButton = popupView.findViewById(R.id.okButton);
 
         Button qualityButton = popupView.findViewById(R.id.qualityButton);
         TextView qualityText = popupView.findViewById(R.id.qualityText);
-
-        final JSONArray formats = new JSONArray(); //Youtube.getFormats(id);
 
         Selection selection = new Selection();
         Runnable updateSelection = () -> {
@@ -240,49 +295,34 @@ public class StartFragment extends Fragment {
         qualityButton.setOnClickListener((v) -> {
             recyclerView.setAdapter(adapter[0]);
 
-            recyclerWindow.showAsDropDown(qualityButton, (int) -qualityButton.getX(), -qualityButton.getHeight() + 20);
+            recyclerWindow.showAsDropDown(qualityButton, (int) -qualityButton.getX(), -qualityButton.getHeight() + 16);
         });
 
         TextInputEditText editText = popupView.findViewById(R.id.fileNameEditText);
         editText.setText(title);
 
-        Switch videoSwitch = popupView.findViewById(R.id.videoSwitch);
-        Switch audioSwitch = popupView.findViewById(R.id.audioSwitch);
+        getMainActivity().setOnRadioButtonClickedListener((radioButtonView) -> {
+            RadioButton radioButton = (RadioButton) radioButtonView;
 
-        videoSwitch.setChecked(true);
-        videoSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                selection.video = isChecked;
-                audioSwitch.setChecked(!isChecked);
-
-                adapter[0] = new QualityAdapter(selection.video, formats, (pos) -> {
-                    recyclerWindow.dismiss();
-                    selection.format = pos;
-
-                    updateSelection.run();
-                });
-                selection.format = adapter[0].getFirstSlot();
-                updateSelection.run();
+            switch(radioButton.getId()) {
+                case R.id.videoRadioButton:
+                    selection.video = true;
+                    break;
+                case R.id.audioRadioButton:
+                    selection.video = false;
+                    break;
+                default:
+                    break;
             }
-        });
 
-        audioSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                selection.video = !isChecked;
-                videoSwitch.setChecked(!isChecked);
+            adapter[0] = new QualityAdapter(selection.video, formats, (pos) -> {
+                recyclerWindow.dismiss();
+                selection.format = pos;
 
-                adapter[0] = new QualityAdapter(selection.video, formats, (pos) -> {
-                    recyclerWindow.dismiss();
-                    selection.format = pos;
-
-                    updateSelection.run();
-                });
-
-                selection.format = adapter[0].getFirstSlot();
                 updateSelection.run();
-            }
+            });
+            selection.format = adapter[0].getFirstSlot();
+            updateSelection.run();
         });
 
         // create the popup window
@@ -298,7 +338,6 @@ public class StartFragment extends Fragment {
         });
 
         okButton.setOnClickListener((v) -> {
-            /*
             if(selection.video) {
                 JSONObject videoFormat = formats.optJSONObject(selection.format);
                 final String[] videoNames = Youtube.getNames(videoFormat, title, downloadFolder);
@@ -354,7 +393,6 @@ public class StartFragment extends Fragment {
                 popupWindow.dismiss();
             }
 
-             */
         });
     }
 
@@ -412,7 +450,8 @@ public class StartFragment extends Fragment {
             Navigation.findNavController(view).navigate(R.id.playerFragment);
         });
 
-        resultAdapter.setOnDownloadClicked((v, position) -> {
+        resultAdapter.setOnItemLongClickListener((v, position) -> {
+            getMainActivity().vibrate();
             final String videoId = resultAdapter.getItem(position).optString("videoId");
             popupWindow(view, videoId);
         });
@@ -421,6 +460,12 @@ public class StartFragment extends Fragment {
         OnBackPressedCallback callback = new OnBackPressedCallback(true /* enabled by default */) {
             @Override
             public void handleOnBackPressed() {
+                Object result = history.back();
+                if (result != null) {
+                    resultAdapter.refresh((JSONArray) result);
+                    return;
+                }
+
                 if(doubleBackToExitIsPressedOnce) {
                     jexoPlayer.stop();
                     getActivity().finish();

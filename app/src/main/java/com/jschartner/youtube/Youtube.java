@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import js.Req;
 
@@ -65,6 +66,40 @@ public class Youtube {
                         .setExtras(songDuration)
                         .build(),
                 MediaBrowserCompat.MediaItem.FLAG_PLAYABLE);
+    }
+
+    public static String getSuffix(final JSONObject format) {
+        if(format == null) return null;
+        if (!format.has("mimeType")) return null;
+
+        final boolean isVideo = isVideoFormat(format);
+        final boolean isAudio = isAudioFormat(format);
+
+        if(!(isVideo ^ isAudio)) return null;
+
+        final boolean video = isVideo;
+
+        String _mime = format.optString("mimeType");
+        String[] parts = _mime.split(";");
+        if(parts.length == 0) return null;
+        String[] mimeParts = parts[0].split("/");
+        if(mimeParts.length == 0) return null;
+        String mime = mimeParts[mimeParts.length - 1];
+
+        return concat(video ? "_video" : "", ".",
+                video
+                        ? (("webm".equals(mime)) ? "webm" : "mp4")
+                        : (("webm".equals(mime)) ? "webm" : "m4a"));
+    }
+
+    //[fileTitle, filePath]
+    public static String[] getNames(final JSONObject format, final String title, final String prefix) {
+        if(format == null) return null;
+        if(title == null || title.length() == 0) return null;
+
+        final String suffix = getSuffix(format);
+        if(suffix == null) return null;
+        return new String[]{concat(title, suffix), concat(prefix, "/", title, suffix)};
     }
 
     private static Map<String, String> getQueryMap(final String query) {
@@ -123,8 +158,23 @@ public class Youtube {
         void accept(T t, V v);
     }
 
+    public static <T> void async(final Supplier<T> supplier, final Consumer<T> consumer) {
+        new Async<T>(consumer).execute(supplier);
+    }
+
+    public static void async(final Runnable run, final Runnable onThen) {
+        new Async<Void>((x) -> onThen.run()).execute((() -> {
+            run.run();
+            return null;
+        }));
+    }
+
     public static void fetch(@NonNull final String url, final Consumer<byte[]> onThen, final Runnable onError) {
         new Request(onThen, onError).execute(url);
+    }
+
+    public static void fetchVideo(@NonNull final String id, final Consumer<byte[]> onThen, final Runnable onError) {
+        new Request(onThen, onError).execute(concat("https://www.youtube.com/watch?v=", id));
     }
 
     public static void fetchSearchResults(final String keyword, @NonNull final Consumer<JSONArray> onThen, final Runnable _onError) {
@@ -229,23 +279,89 @@ public class Youtube {
         }, onError);
     }
 
+    public static String getNextVideoIdFromInitialData(@NonNull final JSONObject initialData) {
+        try{
+            return initialData.getJSONObject("contents")
+                    .getJSONObject("twoColumnWatchNextResults")
+                    .getJSONObject("autoplay")
+                    .getJSONObject("autoplay")
+                    .getJSONArray("sets")
+                    .getJSONObject(0)
+                    .getJSONObject("autoplayVideo")
+                    .getJSONObject("watchEndpoint")
+                    .optString("videoId");
+        }
+        catch(JSONException e) {
+            return null;
+        }
+    }
+
+    public static JSONArray getRecommendedVideosFromInitialData(@NonNull final JSONObject initialData) {
+        final JSONArray result = new JSONArray();
+
+        try{
+            final JSONArray results = initialData
+                    .getJSONObject("contents")
+                    .getJSONObject("twoColumnWatchNextResults")
+                    .getJSONObject("secondaryResults")
+                    .getJSONObject("secondaryResults")
+                    .getJSONArray("results");
+
+            for(int i=0;i<results.length();i++) {
+                JSONObject _result = results.getJSONObject(i);
+                JSONObject _compactVideoRenderer = _result.optJSONObject("compactVideoRenderer");
+                if(_compactVideoRenderer != null) {
+                    result.put(_compactVideoRenderer);
+                }
+                JSONObject itemSectionRenderer = _result.optJSONObject("itemSectionRenderer");
+                if(itemSectionRenderer == null) {
+                    continue;
+                }
+                JSONArray contents = itemSectionRenderer.optJSONArray("contents");
+                if(contents == null) {
+                    continue;
+                }
+
+                for(int j=0;j<contents.length();j++) {
+                    JSONObject content = contents.optJSONObject(j);
+                    JSONObject compactVideoRenderer = content
+                            .optJSONObject("compactVideoRenderer");
+                    if(compactVideoRenderer == null) {
+                        continue;
+                    }
+                    result.put(compactVideoRenderer);
+                }
+            }
+
+        } catch(JSONException e) {
+            e.printStackTrace();
+            return null;
+        }
+
+        return result;
+    }
+
+    public static JSONObject getInitialDataFromResponse(@NonNull final String response) {
+        final List<String> matches = Utils.match(response, "ytInitialData = (.*)\\}\\}\\};");
+        if (matches == null) {
+            return null;
+        }
+
+        try {
+            return new JSONObject(concat(matches.get(1), "}}}"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public static void fetchSearchResults(@NonNull final Consumer<JSONArray> onThen, final Runnable _onError) {
         Runnable onError = maybeOnError(_onError);
         fetch("https://www.youtube.com", (bytes) -> {
             final String response = Req.utf8(bytes);
 
-            final List<String> matches = Utils.match(response, "ytInitialData = (.*)\\}\\}\\};");
-
-            if (matches == null) {
-                onError.run();
-                return;
-            }
-
-            final JSONObject initialData;
-            try {
-                initialData = new JSONObject(concat(matches.get(1), "}}}"));
-            } catch (Exception e) {
-                e.printStackTrace();
+            final JSONObject initialData = getInitialDataFromResponse(response);
+            if(initialData == null) {
                 onError.run();
                 return;
             }
@@ -326,24 +442,26 @@ public class Youtube {
         }, onError);
     }
 
+    public static JSONObject getInitialPlayerResponseFromResponse(@NonNull final String response) {
+        final List<String> matches = Utils.match(response, "ytInitialPlayerResponse = (.*)\\}\\}\\};");
+        if(matches == null) {
+            return null;
+        }
+
+        try {
+            return new JSONObject(concat(matches.get(1), "}}}"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public static void fetchInitialPlayerResponse(@NonNull final String id, @NonNull final Consumer2<JSONObject, String> onThen, final Runnable _onError) {
         Runnable onError = maybeOnError(_onError);
         fetch(concat("https://www.youtube.com/watch?v=", id), (bytes) -> {
             final String response = Req.utf8(bytes);
-
-            final List<String> matches = Utils.match(response, "ytInitialPlayerResponse = (.*)\\}\\}\\};");
-            if(matches == null) {
-                onError.run();
-                return;
-            }
-
-            final String playerResponse = concat(matches.get(1), "}}}");
-
-            final JSONObject json;
-            try {
-                json = new JSONObject(playerResponse);
-            } catch (Exception e) {
-                e.printStackTrace();
+            final JSONObject json = getInitialPlayerResponseFromResponse(response);
+            if(json == null) {
                 onError.run();
                 return;
             }
@@ -364,6 +482,117 @@ public class Youtube {
             }
 
             onThen.accept(videoDetails);
+        }, onError);
+    }
+
+    public static void fetchFormatsAndVideoInfoFromResponse(@NonNull final String response, @NonNull final Consumer2<JSONArray, JSONObject> onThen, final Runnable _onError) {
+        Runnable onError = maybeOnError(_onError);
+        final JSONObject initialPlayerResponse = getInitialPlayerResponseFromResponse(response);
+        if(initialPlayerResponse == null) {
+            onError.run();
+            return;
+        }
+
+        final JSONObject videoDetails = initialPlayerResponse.optJSONObject("videoDetails");
+        if(videoDetails == null) {
+            onError.run();
+            return;
+        }
+
+        final JSONObject streamingData = initialPlayerResponse.optJSONObject("streamingData");
+        if(streamingData == null) {
+            onError.run();
+            return;
+        }
+
+        try{
+            if (videoDetails.has("isLive") && videoDetails.optBoolean("isLive")) {
+                videoDetails.put("hlsManifestUrl", streamingData.optString("hlsManifestUrl"));
+            }
+            videoDetails.put("dashManifestUrl", streamingData.optString("dashManifestUrl"));
+        } catch(final JSONException e) {
+            e.printStackTrace();
+            onError.run();
+            return;
+        }
+
+        final Pair<JSONArray, Boolean> _formats = getFormatsFromInitialPlayerResponse(streamingData);
+        if (_formats == null) {
+            onError.run();
+            return;
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////
+
+        final List<String> jsFileUrlMatches = Utils.match(response, "\\/s\\/player\\/[A-Za-z0-9]+\\/[A-Za-z0-9_.]+\\/[A-Za-z0-9_]+\\/base\\.js");
+        if (jsFileUrlMatches == null) {
+            onError.run();
+            return;
+        }
+
+        if (!_formats.second) {
+            onThen.accept(_formats.first, videoDetails);
+            return;
+        }
+
+        fetch(concat("https://www.youtube.com", jsFileUrlMatches.get(0)), (bytes) -> {
+            final String jsFileContent = Req.utf8(bytes);
+
+            final List<String> decodeFunctionMatches = Utils.match(jsFileContent, "function.*\\.split\\(\\\"\\\"\\).*\\.join\\(\\\"\\\"\\)\\}");
+            if (decodeFunctionMatches == null) {
+                onError.run();
+                return;
+            }
+
+            String decodeFunction = decodeFunctionMatches.get(0);
+            final List<String> varNameMatches = Utils.match(decodeFunction, "\\.split\\(\\\"\\\"\\);([a-zA-Z0-9]+)\\.");
+            if (varNameMatches == null) {
+                onError.run();
+                return;
+            }
+
+            final List<String> varDeclaresMatches = Utils.match(jsFileContent, "(var " + varNameMatches.get(1) + "=\\{[\\s\\S]+\\}\\};)[a-zA-Z0-9]+\\.[a-zA-Z0-9]+\\.prototype");
+            if (varDeclaresMatches == null) {
+                onError.run();
+                return;
+            }
+
+            Function<String, String> decoder = signatureCipher -> {
+                Map<String, String> params = getQueryMap(signatureCipher);
+                String url = Req.decode(params.get("url"));
+                String signature = Req.decode(params.get("s"));
+
+                String expr = concat("\"use-strict\";",
+                        varDeclaresMatches.get(1),
+                        "(", decodeFunction, ")(\"", signature, "\");");
+
+                String val = runScript(expr, engine);
+                String script = concat("encodeURIComponent(\"", val, "\")");
+
+                return url + concat("&sig=", runScript(script, engine));
+            };
+
+            final JSONArray formats = _formats.first;
+            for (int i = 0; i < formats.length(); i++) {
+                final JSONObject format = formats.optJSONObject(i);
+                if (format == null) continue;
+                final String signatureCipher = format.optString("signatureCipher");
+                if (signatureCipher == null) continue;
+
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        format.put("url", decoder.apply(signatureCipher));
+                    }
+                    format.put("signatureCipher", null);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    onError.run();
+                    return;
+                }
+            }
+
+            onThen.accept(formats, videoDetails);
+
         }, onError);
     }
 
@@ -472,6 +701,39 @@ public class Youtube {
         }, onError);
     }
 
+    private static class Async<T> extends AsyncTask<Supplier<T>, Void, T> {
+
+        private final Consumer<T> onThen;
+
+        public Async(final Consumer<T> onThen) {
+            this.onThen = onThen;
+        }
+
+        @Override
+        protected void onPostExecute(T result) {
+            super.onPostExecute(result);
+
+            if(onThen != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    onThen.accept(result);
+                }
+            }
+        }
+
+        @Override
+        protected T doInBackground(Supplier<T>... suppliers) {
+            if(suppliers == null || suppliers.length == 0) {
+                return null;
+            }
+            Supplier<T> supplier = suppliers[0];
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                return supplier.get();
+            }
+            return null;
+        }
+    }
+
     private static class Request extends AsyncTask<String, Void, byte[]> {
 
         private final Consumer<byte[]> onThen;
@@ -516,7 +778,7 @@ public class Youtube {
             }
 
             if(!result.ok) {
-                Log.i("YOUTUBE", "Request failed with requestCode: "+String.valueOf(result.responseCode));
+                Log.i("YOUTUBE.REQUEST", "Request failed with requestCode: "+String.valueOf(result.responseCode));
                 return null;
             }
 

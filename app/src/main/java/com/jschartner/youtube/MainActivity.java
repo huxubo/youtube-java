@@ -2,10 +2,14 @@ package com.jschartner.youtube;
 
 import static js.Io.concat;
 
+import android.content.Context;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.SearchView;
 
 import androidx.annotation.NonNull;
@@ -13,8 +17,11 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.Iterator;
+
+import js.Req;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -23,6 +30,26 @@ public class MainActivity extends AppCompatActivity {
     protected ResultAdapter searchAdapter;
     protected ResultAdapter recommendationAdapter;
     protected RunningDownloadManager downloadManager;
+
+    //BEGIN RADIO BUTTON
+
+    private OnRadioButtonClickedListener onRadioButtonClickedListener;
+
+    protected interface OnRadioButtonClickedListener {
+        void onRadioButtonClicked(View view);
+    }
+
+    public void setOnRadioButtonClickedListener(final OnRadioButtonClickedListener onRadioButtonClickedListener) {
+        this.onRadioButtonClickedListener = onRadioButtonClickedListener;
+    }
+
+    public void onRadioButtonClicked(View view) {
+        if(onRadioButtonClickedListener != null) {
+            onRadioButtonClickedListener.onRadioButtonClicked(view);
+        }
+    }
+
+    //END RADIO BUTTON
 
     /*
     public void playVideo(final String id) {
@@ -47,55 +74,96 @@ public class MainActivity extends AppCompatActivity {
     }
     */
 
+    public void vibrate() {
+        Vibrator vibrator = (Vibrator) getApplicationContext().getSystemService(Context.VIBRATOR_SERVICE);
+        long duration = 100;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE));
+        } else {
+            //deprecated in API 26
+            vibrator.vibrate(duration);
+        }
+    }
+
+    public void toast(final Object ...os) {
+        Utils.toast(this, concat(os));
+    }
+
     public void playVideo(@NonNull final String id) {
-        Youtube.fetchFormatsAndVideoInfo(id, (formats, info) -> {
-            final String lengthString = info.optString("lengthSeconds");
-            if(lengthString == null) {
-                Utils.toast(this, "Can not find length in videoDetails");
+        recommendationAdapter.free();
+
+        Youtube.fetchVideo(id, (bytes) -> {
+            final String response = Req.utf8(bytes);
+
+            Youtube.fetchFormatsAndVideoInfoFromResponse(response, (formats, info) -> {
+                final String lengthString = info.optString("lengthSeconds");
+                if(lengthString == null) {
+                    Utils.toast(this, "Can not find length in videoDetails");
+                    return;
+                }
+
+                jexoPlayer.setOnPlayerError((error) -> {
+                    toast("fetching Youtube again ...");
+                    playVideo(id);
+                });
+                jexoPlayer.playFirst(new Iterator<String>() {
+                    int state = 0;
+
+                    @Override
+                    public boolean hasNext() {
+                        return state<3;
+                    }
+
+                    @Override
+                    public String next() {
+                        switch(state++) {
+                            case 0:
+                                try {
+                                    return Youtube.buildMpd(formats, Integer.parseInt(lengthString));
+                                }
+                                catch(final JSONException e) {
+                                    return null;
+                                }
+                            case 1:
+                                try{
+                                    return info.getString("hlsManifestUrl");
+                                } catch(final JSONException e) {
+                                    return null;
+                                }
+                            case 2:
+                                try{
+                                    return info.getString("dashManifestUrl");
+                                } catch(final JSONException e) {
+                                    return null;
+                                }
+                            default:
+                                return null;
+                        }
+                    }
+                }, Youtube.toMediaItem(id, info));
+            }, () -> toast("Failed to fetch Formats"));
+
+            final JSONObject initialData = Youtube.getInitialDataFromResponse(response);
+            if(initialData == null) {
+                toast("Failed to parse initialData");
                 return;
             }
 
-            jexoPlayer.setOnPlayerError((error) -> {
-               playVideo(id);
-            });
-            jexoPlayer.playFirst(new Iterator<String>() {
-                int state = 0;
+            final JSONArray recommendations = Youtube.getRecommendedVideosFromInitialData(initialData);
+            if(recommendations == null) {
+                toast("Failed to parse the recommendedVideos");
+                return;
+            }
+            recommendationAdapter.refresh(recommendations);
 
-                @Override
-                public boolean hasNext() {
-                    return state<3;
-                }
+            final String nextVideoId = Youtube.getNextVideoIdFromInitialData(initialData);
+            if(nextVideoId !=null ) {
+                jexoPlayer.setOnMediaEnded(() -> {
+                    playVideo(nextVideoId);
+                });
+            }
 
-                @Override
-                public String next() {
-                    switch(state++) {
-                        case 0:
-                            try {
-                                return Youtube.buildMpd(formats, Integer.parseInt(lengthString));
-                            }
-                            catch(final JSONException e) {
-                                return null;
-                            }
-                        case 1:
-                            try{
-                                return info.getString("hlsManifestUrl");
-                            } catch(final JSONException e) {
-                                return null;
-                            }
-                        case 2:
-                            try{
-                                return info.getString("dashManifestUrl");
-                            } catch(final JSONException e) {
-                                return null;
-                            }
-                        default:
-                            return null;
-                    }
-                }
-            }, Youtube.toMediaItem(id, info));
-        }, () -> {
-            Utils.toast(this, "Failed to fetch Formats");
-        });
+        }, () -> toast("Failed to fetch Youtube"));
     }
 
     @Override
@@ -138,6 +206,7 @@ public class MainActivity extends AppCompatActivity {
         if(jexoPlayer.isConnected()) {
             jexoPlayer.disconnect();
         }
+        Youtube.close();
         super.onDestroy();
     }
 
@@ -178,4 +247,6 @@ public class MainActivity extends AppCompatActivity {
 
         return super.onCreateOptionsMenu(menu);
     }
+
+
 }

@@ -55,17 +55,28 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <Switch
-                android:id="@+id/videoSwitch"
-                android:text="Video"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+            <RadioGroup
+                android:id="@+id/videoAudioRadioGroup"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal">
 
-            <Switch
-                android:id="@+id/audioSwitch"
-                android:text="Audio"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                <RadioButton android:id="@+id/videoRadioButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Video"
+                    android:checked="true"
+                    android:onClick="onRadioButtonClicked"/>
+
+                <RadioButton android:id="@+id/audioRadioButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Audio"
+                    android:checked="false"
+                    android:onClick="onRadioButtonClicked"/>
+
+
+            </RadioGroup>
 
         </LinearLayout>
 

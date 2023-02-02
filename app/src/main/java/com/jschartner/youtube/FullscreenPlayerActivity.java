@@ -9,8 +9,6 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
-import com.google.android.exoplayer2.Player;
-
 import org.json.JSONObject;
 
 //cd E:\Documents\tu\android\ExoPlayer3 && gradlew installDebug && adb shell monkey -p com.example.exoplayer 1
@@ -27,7 +25,7 @@ public class FullscreenPlayerActivity extends AppCompatActivity {
         windowInsetsController.hide(WindowInsetsCompat.Type.systemBars());
 
         jexoPlayer = Utils.getJexoPlayer(this);
-        jexoPlayerView.setPlayer(jexoPlayer);
+        //jexoPlayerView.setPlayer(jexoPlayer);
 
         Intent intent = getIntent();
         if (intent != null) {
@@ -37,14 +35,14 @@ public class FullscreenPlayerActivity extends AppCompatActivity {
             }
         }
         if (videoInfo != null) {
-            jexoPlayerView.setInfo(videoInfo);
+            //jexoPlayerView.setInfo(videoInfo);
         }
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        jexoPlayerView.setPlayer((Player) null);
+        //jexoPlayerView.setPlayer((Player) null);
     }
 
     @Override
@@ -75,6 +73,7 @@ public class FullscreenPlayerActivity extends AppCompatActivity {
         FullscreenPlayerActivity playerActivity = this;
 
         jexoPlayerView = findViewById(R.id.player_view);
+        /*
         jexoPlayerView.setOnTouchListener(new OnSwipeTouchListener(this) {
             @Override
             public void onDoubleRightClick() {
@@ -87,6 +86,7 @@ public class FullscreenPlayerActivity extends AppCompatActivity {
             }
         });
 
+        /*
         jexoPlayerView.setOnBackPressedListener(new JexoPlayerView.OnBackPressedListener() {
             @Override
             public void onBackPressed() {
@@ -94,5 +94,7 @@ public class FullscreenPlayerActivity extends AppCompatActivity {
                 playerActivity.onBackPressed();
             }
         });
+
+         */
     }
 }

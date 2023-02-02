@@ -4,6 +4,7 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/white"
     tools:ignore="MissingDefaultResource">
 
     <TextView
@@ -11,6 +12,7 @@
         android:layout_height="wrap_content"
         android:padding="8dp"
         android:id="@+id/qualityText"
+        android:textColor="@color/grey"
         android:layout_alignParentLeft="true"
         android:text="Hello, World" />
 
@@ -20,6 +22,7 @@
         android:padding="8dp"
         android:id="@+id/sizeText"
         android:layout_alignParentRight="true"
+        android:textColor="@color/purple_500"
         android:text="Hello, World" />
 
 </RelativeLayout>

@@ -30,8 +30,6 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
-import com.google.android.exoplayer2.Player;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -349,14 +347,14 @@ public class MainActivity2 extends AppCompatActivity {
     public void onResume() {
         super.onResume();
         jexoPlayer = Utils.getJexoPlayer(this);
-        jexoplayerView.setPlayer(jexoPlayer);
+        //jexoplayerView.setPlayer(jexoPlayer);
         jexoPlayerLayout.setVisibility(jexoPlayer.isEmpty() ? View.GONE : View.VISIBLE);
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        jexoplayerView.setPlayer((Player) null);
+        //jexoplayerView.setPlayer((Player) null);
     }
 
     private void vibrate() {
@@ -425,6 +423,8 @@ public class MainActivity2 extends AppCompatActivity {
         jexoPlayerLayout = findViewById(R.id.playerLayout);
         jexoplayerView = findViewById(R.id.playerView);
         jexoPlayer = Utils.getJexoPlayer(this);
+
+        /*
         jexoplayerView.setPlayer(jexoPlayer);
 
         jexoplayerView.setOnClickListener((v) -> startFullscreenPlayer());
@@ -444,6 +444,8 @@ public class MainActivity2 extends AppCompatActivity {
         });
 
         jexoplayerView.setUseController(false);
+
+         */
 
         Utils.createNotificationChannel(this, CHANNEL_ID, NOTIFICATION_CHANNEL_NAME, NOTIFICATION_CHANNEL_DESCRIPTION);
 

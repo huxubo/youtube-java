@@ -60,14 +60,16 @@ public class ResultAdapter extends ArrayAdapter<JSONObject> {
         TextView authorView = rowView.findViewById(R.id.authorView);
         ImageView iconView = rowView.findViewById(R.id.iconView);
         TextView durationView = rowView.findViewById(R.id.duration);
-        ImageView downloadButton = rowView.findViewById(R.id.downloadButton);
+        //ImageView downloadButton = rowView.findViewById(R.id.downloadButton);
         TextView publishedView = rowView.findViewById(R.id.publishedView);
 
+        /*
         if (onDownloadClicked != null) {
             downloadButton.setOnClickListener((v) -> {
                 onDownloadClicked.onClick(v, position);
             });
         }
+         */
 
         if (onContentClicked != null) {
             imageView.setOnClickListener((v) -> {
@@ -89,7 +91,7 @@ public class ResultAdapter extends ArrayAdapter<JSONObject> {
             if (json.has("lengthText")) {
                 durationText = json.getJSONObject("lengthText")
                         .getString("simpleText");
-                downloadButton.setVisibility(View.VISIBLE);
+                //downloadButton.setVisibility(View.VISIBLE);
             } else {
                 durationView.setBackgroundColor(Color.RED);
             }
@@ -259,6 +261,16 @@ public class ResultAdapter extends ArrayAdapter<JSONObject> {
     public void free() {
         clear();
         notifyDataSetChanged();
+        for(int i=0;i<channelTasks.length;i++) {
+            if(channelTasks[i] != null) {
+                channelTasks[i].cancel(true);
+            }
+        }
+        for(int i=0;i<videoTasks.length;i++) {
+            if(videoTasks[i] != null) {
+                videoTasks[i].cancel(true);
+            }
+        }
     }
 
     public void refresh(final JSONArray result) {

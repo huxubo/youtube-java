@@ -18,8 +18,6 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.android.exoplayer2.Player;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -51,7 +49,7 @@ public class PlayerActivity extends AppCompatActivity {
     public void onResume() {
         super.onResume();
         jexoPlayer = Utils.getJexoPlayer(this);
-        jexoPlayerView.setPlayer(jexoPlayer);
+        //jexoPlayerView.setPlayer(jexoPlayer);
 
         Intent intent = getIntent();
         if (intent == null) {
@@ -96,7 +94,7 @@ public class PlayerActivity extends AppCompatActivity {
     @Override
     public void onPause() {
         super.onPause();
-        jexoPlayerView.setPlayer((Player) null);
+        //jexoPlayerView.setPlayer((Player) null);
     }
 
     private static class ResultAdapter extends ArrayAdapter<JSONObject> {
@@ -294,7 +292,7 @@ public class PlayerActivity extends AppCompatActivity {
             }
         });
 
-        jexoPlayerView.setOnBackPressedListener(() -> {
+        jexoPlayerView.setOnBackPressedListener((_view) -> {
             playerActivity.onBackPressed();
         });
 

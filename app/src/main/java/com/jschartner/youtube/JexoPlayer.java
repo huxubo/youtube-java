@@ -234,7 +234,10 @@ public class JexoPlayer extends BroadcastReceiver {
             CronetEngine cronetEngine = CronetUtil.buildCronetEngine(context);
             if (cronetEngine != null) {
                 httpDataSourceFactory =
-                        new CronetDataSource.Factory(cronetEngine, Executors.newSingleThreadExecutor());
+                        new CronetDataSource.Factory(cronetEngine, Executors.newFixedThreadPool(12));
+            }
+            if(httpDataSourceFactory == null) {
+                //httpDataSourceFactory = new DefaultHttpDataSource.Factory();
             }
         }
         return httpDataSourceFactory;
@@ -283,8 +286,12 @@ public class JexoPlayer extends BroadcastReceiver {
     }
 
     public JexoPlayer(Context context) {
+
+
         //setMediaSourceFactory, setRenderersFactory ?
-        this.player = new ExoPlayer.Builder(context).build();
+        this.player = new ExoPlayer.Builder(context)
+                //.setLoadControl(loadControl)
+                .build();
 
         //ON ANY EVENT UPDATE NOTIFICATION, IF EXTISTS
         player.addListener(new Player.Listener() {

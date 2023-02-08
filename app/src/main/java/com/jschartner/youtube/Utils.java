@@ -91,7 +91,11 @@ public class Utils {
     }
 
     public static void toast(Context context, String message) {
-        Toast.makeText(context, message, Toast.LENGTH_LONG).show();
+        toast(context, message, Toast.LENGTH_SHORT);
+    }
+
+    public static void toast(Context context, String message, int length) {
+        Toast.makeText(context, message, length).show();
     }
 
     public static long getBandwidth(final Context context) {

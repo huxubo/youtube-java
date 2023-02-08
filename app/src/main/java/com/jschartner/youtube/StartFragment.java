@@ -447,7 +447,7 @@ public class StartFragment extends Fragment {
             getMainActivity().playVideo(videoId);
 
             //NAVIGATE
-            Navigation.findNavController(view).navigate(R.id.playerFragment);
+            if(getMainActivity().client == null)Navigation.findNavController(view).navigate(R.id.playerFragment);
         });
 
         resultAdapter.setOnItemLongClickListener((v, position) -> {

@@ -19,7 +19,15 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.io.PrintStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.function.Consumer;
 
 import js.Req;
 
@@ -30,6 +38,9 @@ public class MainActivity extends AppCompatActivity {
     protected ResultAdapter searchAdapter;
     protected ResultAdapter recommendationAdapter;
     protected RunningDownloadManager downloadManager;
+
+    protected Client client;
+    protected List<String> remoteIps;
 
     //BEGIN RADIO BUTTON
 
@@ -44,35 +55,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onRadioButtonClicked(View view) {
-        if(onRadioButtonClickedListener != null) {
+        if (onRadioButtonClickedListener != null) {
             onRadioButtonClickedListener.onRadioButtonClicked(view);
         }
     }
 
     //END RADIO BUTTON
-
-    /*
-    public void playVideo(final String id) {
-        //PLAY VIDEO
-        boolean[] errorHappened = {false};
-        jexoPlayer.setOnPlayerError((error) -> {
-            if (errorHappened[0]) return;
-            errorHappened[0] = true;
-            Youtube.resetCache();
-            jexoPlayer.playFirst(Youtube.allSources(id));
-        });
-
-        final String newId = Youtube.getNextVideo(id);
-        jexoPlayer.setOnMediaEnded(() -> {
-            playVideo(newId);
-        });
-
-        jexoPlayer.playFirst(Youtube.allSources(id), Youtube.toMediaItem(id));
-
-        //RECOMMENDATIONS
-        recommendationAdapter.refresh(Youtube.getRecommendedVideos(id));
-    }
-    */
 
     public void vibrate() {
         Vibrator vibrator = (Vibrator) getApplicationContext().getSystemService(Context.VIBRATOR_SERVICE);
@@ -85,11 +73,27 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void toast(final Object ...os) {
+    public void toast(final Object... os) {
         Utils.toast(this, concat(os));
     }
 
     public void playVideo(@NonNull final String id) {
+
+        if(client != null) {
+            toast(concat("Playing video on remote ..."));
+            new Thread(() -> {
+                try{
+                    client.send(id);
+                }
+                catch(IOException e) {
+                    e.printStackTrace();
+                    runOnUiThread(() -> toast("Could not start the video on the remote"));
+                }
+            }).start();
+
+            return;
+        }
+
         recommendationAdapter.free();
 
         Youtube.fetchVideo(id, (bytes) -> {
@@ -97,43 +101,42 @@ public class MainActivity extends AppCompatActivity {
 
             Youtube.fetchFormatsAndVideoInfoFromResponse(response, (formats, info) -> {
                 final String lengthString = info.optString("lengthSeconds");
-                if(lengthString == null) {
+                if (lengthString == null) {
                     Utils.toast(this, "Can not find length in videoDetails");
                     return;
                 }
 
                 jexoPlayer.setOnPlayerError((error) -> {
                     toast("fetching Youtube again ...");
-                    playVideo(id);
+                    //playVideo(id);
                 });
                 jexoPlayer.playFirst(new Iterator<String>() {
                     int state = 0;
 
                     @Override
                     public boolean hasNext() {
-                        return state<3;
+                        return state < 3;
                     }
 
                     @Override
                     public String next() {
-                        switch(state++) {
+                        switch (state++) {
                             case 0:
                                 try {
                                     return Youtube.buildMpd(formats, Integer.parseInt(lengthString));
-                                }
-                                catch(final JSONException e) {
+                                } catch (final JSONException e) {
                                     return null;
                                 }
                             case 1:
-                                try{
+                                try {
                                     return info.getString("hlsManifestUrl");
-                                } catch(final JSONException e) {
+                                } catch (final JSONException e) {
                                     return null;
                                 }
                             case 2:
-                                try{
+                                try {
                                     return info.getString("dashManifestUrl");
-                                } catch(final JSONException e) {
+                                } catch (final JSONException e) {
                                     return null;
                                 }
                             default:
@@ -144,26 +147,162 @@ public class MainActivity extends AppCompatActivity {
             }, () -> toast("Failed to fetch Formats"));
 
             final JSONObject initialData = Youtube.getInitialDataFromResponse(response);
-            if(initialData == null) {
+            if (initialData == null) {
                 toast("Failed to parse initialData");
                 return;
             }
 
             final JSONArray recommendations = Youtube.getRecommendedVideosFromInitialData(initialData);
-            if(recommendations == null) {
+            if (recommendations == null) {
                 toast("Failed to parse the recommendedVideos");
                 return;
             }
             recommendationAdapter.refresh(recommendations);
 
             final String nextVideoId = Youtube.getNextVideoIdFromInitialData(initialData);
-            if(nextVideoId !=null ) {
+            if (nextVideoId != null) {
                 jexoPlayer.setOnMediaEnded(() -> {
                     playVideo(nextVideoId);
                 });
             }
 
         }, () -> toast("Failed to fetch Youtube"));
+    }
+
+    private class Crawler implements Runnable {
+
+        private final Consumer<List<String>> onThen;
+
+        public Crawler(final Consumer<List<String>> onThen) {
+            this.onThen = onThen;
+        }
+
+        @Override
+        public void run() {
+            int timeout = 1000;
+            List<String> ips = new ArrayList<>();
+
+            final String subnet = "192.168.178";
+            //1 .. 255
+            for (int i = 49; i <= 49; i++) {
+                final String host = concat(subnet, ".", i);
+                try {
+                    if (InetAddress.getByName(host).isReachable(timeout)) {
+                        ips.add(host);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+            }
+
+            if (onThen != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    onThen.accept(ips);
+                }
+            }
+        }
+    }
+
+    private class Client {
+        private final String host;
+        private final int port;
+        private ClientThread clientThread;
+
+        private Socket socket;
+        private PrintStream printStream;
+
+        private int TIMEOUT_MS = 5000;
+
+        public Client(final String host, final int port) {
+            this.host = host;
+            this.port = port;
+
+            this.clientThread = null;
+            this.socket = null;
+            this.printStream = null;
+        }
+
+        public boolean connected() {
+            if (socket == null) {
+                return false;
+            }
+            return socket.isConnected();
+        }
+
+        public void disconnect() {
+            if (socket != null) {
+                try {
+                    socket.close();
+                    socket = null;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            if (printStream != null) {
+                try {
+                    printStream.close();
+                    printStream = null;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            clientThread = null;
+        }
+
+        private void print(final String message) throws IOException {
+            printStream.println(message);
+            printStream.flush();
+        }
+
+        public void send(final String message) throws IOException {
+            if (!connected()) {
+                clientThread = new ClientThread();
+                print(message);
+                clientThread.start();
+            } else {
+                print(message);
+            }
+        }
+
+        private class ClientThread extends Thread implements Runnable {
+            public ClientThread()
+                    throws IOException {
+                socket = new Socket();
+                socket.connect(new InetSocketAddress(host, port), TIMEOUT_MS);
+                printStream = new PrintStream(socket.getOutputStream());
+            }
+
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(1000 * 60);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                disconnect();
+            }
+        }
+    }
+
+    private boolean toggleConnectionToRemote() {
+        boolean wasConnected = client != null;
+
+        if (wasConnected) {
+            if(client.connected()) {
+                client.disconnect();
+            }
+            client = null;
+        } else {
+            final String ip = remoteIps.get(0);
+            client = new Client(ip, 8080);
+            toast(concat("Now connected to ", ip));
+        }
+
+        return wasConnected;
     }
 
     @Override
@@ -199,15 +338,24 @@ public class MainActivity extends AppCompatActivity {
                 Utils.toast(getApplicationContext(), concat("Failed to cancel download with id: ", notificationId));
             }
         });
+
+        new Thread(new Crawler((ips) -> {
+            remoteIps = ips;
+        })).start();
     }
 
     @Override
     public void onDestroy() {
-        if(jexoPlayer.isConnected()) {
+        if (jexoPlayer.isConnected()) {
             jexoPlayer.disconnect();
         }
         Youtube.close();
         super.onDestroy();
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        return true;
     }
 
     @Override
@@ -242,6 +390,29 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onQueryTextChange(String newText) {
                 return false;
+            }
+        });
+
+        MenuItem menuConnect = menu.findItem(R.id.connectButton);
+        menuConnect.getIcon().setAlpha(80);
+        menuConnect.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
+            @Override
+            public boolean onMenuItemActionExpand(MenuItem menuItem) {
+                return false;
+            }
+
+            @Override
+            public boolean onMenuItemActionCollapse(MenuItem menuItem) {
+                return false;
+            }
+        });
+
+        menuConnect.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem menuItem) {
+                boolean wasConnected = toggleConnectionToRemote();
+                menuConnect.getIcon().setAlpha(!wasConnected ? 255 : 80);
+                return true;
             }
         });
 

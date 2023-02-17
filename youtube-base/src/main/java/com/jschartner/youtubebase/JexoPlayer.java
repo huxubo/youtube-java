@@ -234,7 +234,7 @@ public class JexoPlayer extends BroadcastReceiver {
             CronetEngine cronetEngine = CronetUtil.buildCronetEngine(context);
             if (cronetEngine != null) {
                 httpDataSourceFactory =
-                        new CronetDataSource.Factory(cronetEngine, Executors.newFixedThreadPool(1));
+                        new CronetDataSource.Factory(cronetEngine, Executors.newFixedThreadPool(4));
             }
             if(httpDataSourceFactory == null) {
                 //httpDataSourceFactory = new DefaultHttpDataSource.Factory();

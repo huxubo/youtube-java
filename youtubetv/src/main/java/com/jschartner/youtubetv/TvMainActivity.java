@@ -26,6 +26,13 @@ import js.Req;
 public class TvMainActivity extends AppCompatActivity {
     protected JexoPlayer jexoPlayer;
     private ServerThread serverThread;
+    protected JSONObject currentVideo;
+
+    private Runnable onCurrentVideoChanged = null;
+
+    protected void setOnCurrentVideoChanged(final Runnable onCurrentVideoChanged) {
+        this.onCurrentVideoChanged = onCurrentVideoChanged;
+    }
 
     public void toast(final Object ...os) {
         Utils.toast(this, Io.concat(os));
@@ -81,7 +88,11 @@ public class TvMainActivity extends AppCompatActivity {
                         }
                     }
                 }, Youtube.toMediaItem(id, info));
-            }, () -> toast("Failed to fetch Formats"));
+                currentVideo = info;
+                if(onCurrentVideoChanged != null) {
+                    onCurrentVideoChanged.run();
+                }
+            }, () -> toast("Failed to fetch Formats inner"));
 
             final JSONObject initialData = Youtube.getInitialDataFromResponse(response);
             if(initialData == null) {
@@ -96,7 +107,7 @@ public class TvMainActivity extends AppCompatActivity {
                 });
             }
 
-        }, () -> toast("Failed to fetch Youtube"));
+        }, () -> toast("Failed to fetch Youtube outer"));
     }
 
     @Override
@@ -111,7 +122,7 @@ public class TvMainActivity extends AppCompatActivity {
         });
         serverThread.start();
 
-        playVideo("XFJcYGFmUQw");
+        //playVideo("XFJcYGFmUQw");
     }
 
     @Override

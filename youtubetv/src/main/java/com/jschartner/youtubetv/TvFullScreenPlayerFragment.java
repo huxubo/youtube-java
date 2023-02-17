@@ -19,6 +19,8 @@ import com.google.android.exoplayer2.Player;
 import com.jschartner.youtubebase.JexoPlayer;
 import com.jschartner.youtubebase.JexoPlayerView;
 
+import org.json.JSONObject;
+
 public class TvFullScreenPlayerFragment extends Fragment {
 
     private JexoPlayerView jexoPlayerView;
@@ -45,6 +47,10 @@ public class TvFullScreenPlayerFragment extends Fragment {
         return (TvMainActivity) getActivity();
     }
 
+    public void toast(final Object ...os) {
+        getMainActivity().toast(os);
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -60,8 +66,22 @@ public class TvFullScreenPlayerFragment extends Fragment {
 
         JexoPlayer jexoPlayer = getMainActivity().jexoPlayer;
         jexoPlayerView = view.findViewById(R.id.player_view);
-
         jexoPlayerView.setPlayer(jexoPlayer);
+        jexoPlayerView.enableBackButton(true);
+        jexoPlayerView.enableFullScreenButton(true);
+        jexoPlayerView.enableFullscreenMode(true);
+
+        getMainActivity().setOnCurrentVideoChanged(() -> {
+            //wow
+            new Thread(() -> {
+                while(getMainActivity() == null) {}
+                getMainActivity().runOnUiThread(() -> {
+                    JSONObject video = getMainActivity().currentVideo;
+                    jexoPlayerView.setTitle(video.optString("title"));
+                    jexoPlayerView.setAuthor(video.optString("author"));
+                });
+            }).start();
+        });
 
         OnBackPressedCallback callback = new OnBackPressedCallback(true /* enabled by default */) {
             @Override

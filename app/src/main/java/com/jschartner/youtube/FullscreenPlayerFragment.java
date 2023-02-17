@@ -81,7 +81,7 @@ public class FullscreenPlayerFragment extends Fragment {
         });
         jexoPlayerView.setPlayer(jexoPlayer);
 
-
+        jexoPlayerView.enableFullscreenMode(true);
 
         return view;
     }

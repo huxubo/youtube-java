@@ -3,6 +3,7 @@ package com.jschartner.youtube;
 import static android.content.Context.LAYOUT_INFLATER_SERVICE;
 import static js.Io.concat;
 
+import android.annotation.SuppressLint;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.os.Environment;
@@ -31,6 +32,12 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.exoplayer2.Player;
 import com.google.android.material.textfield.TextInputEditText;
+import com.jschartner.youtubebase.Ffmpeg;
+import com.jschartner.youtubebase.JexoFormat;
+import com.jschartner.youtubebase.JexoPlayer;
+import com.jschartner.youtubebase.JexoPlayerView;
+import com.jschartner.youtubebase.Utils;
+import com.jschartner.youtubebase.Youtube;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -396,6 +403,7 @@ public class StartFragment extends Fragment {
         });
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -423,6 +431,12 @@ public class StartFragment extends Fragment {
         LinearLayout jexoPlayerLayout = view.findViewById(R.id.playerLayout);
         jexoPlayerLayout.setVisibility(jexoPlayer.isEmpty() ? View.GONE : View.VISIBLE);
         jexoPlayerView = view.findViewById(R.id.playerView);
+        jexoPlayer.setOnPlayWhenReadyChanged(((playWhenReady, reason) -> {
+            if(playWhenReady) {
+                jexoPlayerLayout.setVisibility(View.VISIBLE);
+            }
+        }));
+
         jexoPlayerView.setOnTouchListener(new OnSwipeTouchListener(getActivity()) {
             @Override
             public void onSwipeTop() {

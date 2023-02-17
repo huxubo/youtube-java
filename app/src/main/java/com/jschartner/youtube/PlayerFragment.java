@@ -12,6 +12,8 @@ import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 
 import com.google.android.exoplayer2.Player;
+import com.jschartner.youtubebase.JexoPlayer;
+import com.jschartner.youtubebase.JexoPlayerView;
 
 /**
  * A simple {@link Fragment} subclass.

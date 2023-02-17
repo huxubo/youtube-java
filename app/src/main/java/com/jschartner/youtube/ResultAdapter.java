@@ -19,9 +19,9 @@ import org.json.JSONObject;
 
 public class ResultAdapter extends ArrayAdapter<JSONObject> {
     private Bitmap[] videoBitmaps;
-    private MainActivity2.DownloadImageTask[] videoTasks;
+    private DownloadImageTask[] videoTasks;
     private Bitmap[] channelBitmaps;
-    private MainActivity2.DownloadImageTask[] channelTasks;
+    private DownloadImageTask[] channelTasks;
     private final boolean recommendations;
 
     interface OnItemClickedListener {
@@ -47,9 +47,9 @@ public class ResultAdapter extends ArrayAdapter<JSONObject> {
     public ResultAdapter(@NonNull Context context, int resource, boolean recommendations) {
         super(context, resource);
         videoBitmaps = new Bitmap[0];
-        videoTasks = new MainActivity2.DownloadImageTask[0];
+        videoTasks = new DownloadImageTask[0];
         channelBitmaps = new Bitmap[0];
-        channelTasks = new MainActivity2.DownloadImageTask[0];
+        channelTasks = new DownloadImageTask[0];
         this.recommendations = recommendations;
     }
 
@@ -278,10 +278,10 @@ public class ResultAdapter extends ArrayAdapter<JSONObject> {
         clear();
 
         channelBitmaps = new Bitmap[result.length()];
-        channelTasks = new MainActivity2.DownloadImageTask[result.length()];
+        channelTasks = new DownloadImageTask[result.length()];
 
         videoBitmaps = new Bitmap[result.length()];
-        videoTasks = new MainActivity2.DownloadImageTask[result.length()];
+        videoTasks = new DownloadImageTask[result.length()];
         for (int i = 0; i < result.length(); i++) {
             JSONObject json = result.optJSONObject(i);
             if (json == null) continue;
@@ -309,12 +309,12 @@ public class ResultAdapter extends ArrayAdapter<JSONObject> {
             }
 
             if (url != null) {
-                videoTasks[i] = new MainActivity2.DownloadImageTask(videoBitmaps, i, false);
+                videoTasks[i] = new DownloadImageTask(videoBitmaps, i, false);
                 videoTasks[i].execute(url);
             }
 
             if (channelUrl != null) {
-                channelTasks[i] = new MainActivity2.DownloadImageTask(channelBitmaps, i, true);
+                channelTasks[i] = new DownloadImageTask(channelBitmaps, i, true);
                 channelTasks[i].execute(channelUrl);
             }
         }

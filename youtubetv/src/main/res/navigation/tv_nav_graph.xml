@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/tv_nav_graph"
+    app:startDestination="@id/tvFullScreenPlayerFragment">
+    <fragment
+        android:id="@+id/tvFullScreenPlayerFragment"
+        android:name="com.jschartner.youtubetv.TvFullScreenPlayerFragment"
+        android:label="fragment_tv_full_screen_player"
+        tools:layout="@layout/fragment_tv_full_screen_player" />
+</navigation>

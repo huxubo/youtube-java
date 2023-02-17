@@ -7,12 +7,14 @@ import android.content.Context;
 
 import androidx.core.app.NotificationManagerCompat;
 
+import com.jschartner.youtubebase.Utils;
+
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
 public class RunningDownloadManager {
-    private static final int BASE_NOTIFICATION_ID = 421;
+    private static final int BASE_NOTIFICATION_ID = 25;
     private static final int BASE_NOTIFICATION_ID_MAX = Integer.MAX_VALUE;
     private static final DecimalFormat dotTwo = new DecimalFormat("0.00");
 

@@ -15,6 +15,10 @@ import android.widget.SearchView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.jschartner.youtubebase.JexoPlayer;
+import com.jschartner.youtubebase.Utils;
+import com.jschartner.youtubebase.Youtube;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -30,6 +34,20 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import js.Req;
+
+/*
+ - TODOS:
+ * Loading animation, when refreshing or loading Video
+ * Finish Playerfragment, with title, description, view, download ...
+ * Video-Title in Player
+ * Reset Quality Settings every Video, display Quality Settings, Show remaining Time on Player
+ * MAYBE LOGIN ??
+ * MAYBE COMMENTS
+ * MAYBE INFINITE Scrolling
+ * Better networking: check more frequently, maybe ping
+ * sick animations
+
+ */
 
 public class MainActivity extends AppCompatActivity {
 

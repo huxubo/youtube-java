@@ -1,11 +1,14 @@
 package com.jschartner.youtube;
 
+import static js.Io.concat;
+
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
@@ -15,6 +18,8 @@ import com.google.android.exoplayer2.Player;
 import com.jschartner.youtubebase.JexoPlayer;
 import com.jschartner.youtubebase.JexoPlayerView;
 
+import org.json.JSONObject;
+
 /**
  * A simple {@link Fragment} subclass.
  * Use the {@link PlayerFragment#newInstance} factory method to
@@ -23,6 +28,8 @@ import com.jschartner.youtubebase.JexoPlayerView;
 public class PlayerFragment extends Fragment {
 
     private JexoPlayerView jexoPlayerView;
+    private TextView titleView;
+    private TextView durationView;
 
     public PlayerFragment() {
         // Required empty public constructor
@@ -48,6 +55,12 @@ public class PlayerFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
         jexoPlayerView.setPlayer((Player) null);
+        titleView.setText("");
+        durationView.setText("");
+    }
+
+    private void toast(final Object... os) {
+        getMainActivity().toast(os);
     }
 
     @Override
@@ -66,8 +79,10 @@ public class PlayerFragment extends Fragment {
         ListView listView = view.findViewById(R.id.recommendationsListView);
         listView.setAdapter(resultAdapter);
         resultAdapter.setOnContentClicked((v, pos) -> {
-            final String videoId = resultAdapter.getItem(pos).optString("videoId");
+            final JSONObject result = resultAdapter.getItem(pos);
+            final String videoId = result.optString("videoId");
             getMainActivity().playVideo(videoId);
+
             listView.setSelectionFromTop(0, 0);
         });
 
@@ -78,7 +93,7 @@ public class PlayerFragment extends Fragment {
             Navigation.findNavController(view).popBackStack();
         });
 
-        jexoPlayerView.setOnTouchListener(new OnSwipeTouchListener(getActivity()){
+        jexoPlayerView.setOnTouchListener(new OnSwipeTouchListener(getActivity()) {
             @Override
             public void onSwipeBottom() {
                 Navigation.findNavController(view).popBackStack();
@@ -87,6 +102,20 @@ public class PlayerFragment extends Fragment {
         jexoPlayerView.setOnFullscreenPressedListener((v) -> {
             Navigation.findNavController(view).navigate(R.id.fullscreenPlayerFragment);
         });
+
+        titleView = view.findViewById(R.id.playerTitleView);
+        durationView = view.findViewById(R.id.playerDurationView);
+
+        final Runnable update = () -> {
+            JSONObject video = getMainActivity().currentVideo;
+            if(video != null) {
+                titleView.setText(video.optString("title"));
+                durationView.setText(concat(video.optString("viewCountText"), " - ", video.optString("publishedTimeText")));
+            }
+        };
+
+        update.run();
+        getMainActivity().setOnCurrentVideoChanged(update);
 
         return view;
     }

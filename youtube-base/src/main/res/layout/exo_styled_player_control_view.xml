@@ -70,10 +70,10 @@
         app:srcCompat="@drawable/arrow_down" />
 
     <LinearLayout
-        android:layout_width="wrap_content"
+        android:layout_width="600dp"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        app:layout_constraintHorizontal_bias="0.12"
+        app:layout_constraintHorizontal_bias="0.24"
         app:layout_constraintVertical_bias="0.016"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -105,7 +105,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintHorizontal_bias="0.08"
+        app:layout_constraintHorizontal_bias="0.04"
         app:layout_constraintVertical_bias="0.86"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

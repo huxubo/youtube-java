@@ -7,10 +7,9 @@ import android.os.AsyncTask;
 import android.widget.ImageView;
 
 import java.io.InputStream;
-import java.lang.ref.WeakReference;
 
 public class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
-    private WeakReference<ImageView> imageView;
+    private ImageView imageView;
     private Bitmap[] bitmaps;
     private int position;
     private boolean crop;
@@ -23,7 +22,7 @@ public class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
     }
 
     public void setImageView(ImageView imageView) {
-        this.imageView = new WeakReference<>(imageView);
+        this.imageView = imageView;
     }
 
     @Override
@@ -66,6 +65,9 @@ public class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
 
     protected void onPostExecute(Bitmap result) {
         bitmaps[position] = result;
-        if (imageView != null) imageView.get().setImageBitmap(result);
+        if (imageView != null) {
+            imageView.setImageBitmap(result);
+        }
+        imageView = null;
     }
 }

@@ -17,6 +17,8 @@ import com.google.android.exoplayer2.Player;
 import com.jschartner.youtubebase.JexoPlayer;
 import com.jschartner.youtubebase.JexoPlayerView;
 
+import org.json.JSONObject;
+
 
 /**
  * A simple {@link Fragment} subclass.
@@ -80,6 +82,16 @@ public class FullscreenPlayerFragment extends Fragment {
             Navigation.findNavController(view).popBackStack();
         });
         jexoPlayerView.setPlayer(jexoPlayer);
+
+        final Runnable update = () -> {
+            JSONObject video = getMainActivity().currentVideo;
+            if(video != null) {
+                jexoPlayerView.setAuthor(video.optString("author"));
+                jexoPlayerView.setTitle(video.optString("title"));
+            }
+        };
+        update.run();
+        getMainActivity().setOnCurrentVideoChanged(update);
 
         jexoPlayerView.enableFullscreenMode(true);
 

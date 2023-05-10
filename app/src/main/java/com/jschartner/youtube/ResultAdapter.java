@@ -135,30 +135,51 @@ public class ResultAdapter extends ArrayAdapter<JSONObject> {
         }
 
         try {
-            String publishedString = json.optJSONObject("publishedTimeText")
-                    .optString("simpleText");
-
+            String publishedString = null;
+            if(json.has("publishedTimeText")) {
+                JSONObject publishedTimeText = json.optJSONObject("publishedTimeText");
+                publishedString = publishedTimeText.optString("simpleText");
+            }
             publishedView.setText(publishedString);
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+        boolean start_thread = true;
+
         if (videoBitmaps[position] != null) {
             videoTasks[position] = null;
             imageView.setImageBitmap(videoBitmaps[position]);
-        } else {
-            videoTasks[position].setImageView(imageView);
+            start_thread = false;
         }
 
         if (channelBitmaps[position] != null) {
             channelTasks[position] = null;
             iconView.setImageBitmap(channelBitmaps[position]);
-        } else {
-            channelTasks[position].setImageView(iconView);
+            start_thread = false;
         }
 
+        if(start_thread) {
+            load_bitmap(json, position, imageView, iconView);
+        }
 
         return rowView;
+    }
+
+    public Bitmap fill(int color) {
+        int width = 120;
+        int height = 120;
+        Bitmap result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        for(int y=0;y<height;y++) {
+            for(int x=0;x<width;x++) {
+                result.setPixel(y, x, color);
+            }
+        }
+        return result;
+    }
+
+    public Bitmap black() {
+        return fill(0xff000000);
     }
 
     public View getViewRecommendation(int position, View convertView, ViewGroup parent) {
@@ -173,7 +194,7 @@ public class ResultAdapter extends ArrayAdapter<JSONObject> {
         JSONObject json = getItem(position);
 
         if (onContentClicked != null) {
-            imageView.setOnClickListener((v) -> {
+            rowView.setOnClickListener((v) -> {
                 onContentClicked.onClick(v, position);
             });
         }
@@ -210,9 +231,11 @@ public class ResultAdapter extends ArrayAdapter<JSONObject> {
         }
 
         try {
-            String publishedString = json.optJSONObject("publishedTimeText")
-                    .optString("simpleText");
-
+            String publishedString = null;
+            if(json.has("publishedTimeText")) {
+                JSONObject publishedTimeText = json.optJSONObject("publishedTimeText");
+                publishedString = publishedTimeText.optString("simpleText");
+            }
             publishedView.setText(publishedString);
         } catch (Exception e) {
             e.printStackTrace();
@@ -232,18 +255,22 @@ public class ResultAdapter extends ArrayAdapter<JSONObject> {
             e.printStackTrace();
         }
 
+        boolean start_thread = true;
+
         if (videoBitmaps[position] != null) {
             videoTasks[position] = null;
             imageView.setImageBitmap(videoBitmaps[position]);
-        } else if(channelTasks[position] != null){
-            videoTasks[position].setImageView(imageView);
+            start_thread = false;
         }
 
         if (channelBitmaps[position] != null) {
             channelTasks[position] = null;
             iconView.setImageBitmap(channelBitmaps[position]);
-        } else if(channelTasks[position] != null ){
-            channelTasks[position].setImageView(iconView);
+            start_thread = false;
+        }
+
+        if(start_thread ) {
+            load_bitmap(json, position, imageView, iconView);
         }
 
         return rowView;
@@ -273,6 +300,53 @@ public class ResultAdapter extends ArrayAdapter<JSONObject> {
         }
     }
 
+    private void load_bitmap(JSONObject json, int index, ImageView imageView, ImageView iconView) {
+        String url = null;
+
+        try {
+            JSONArray thumbnails = json.getJSONObject("thumbnail")
+                    .getJSONArray("thumbnails");
+            JSONObject thumbnail = thumbnails.getJSONObject(thumbnails.length() - 1);
+            url = thumbnail.getString("url");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        String channelUrl = null;
+        try {
+            if(json.has("channelThumbnailSupportedRenderers")) {
+                channelUrl = json.getJSONObject("channelThumbnailSupportedRenderers")
+                        .getJSONObject("channelThumbnailWithLinkRenderer")
+                        .getJSONObject("thumbnail")
+                        .getJSONArray("thumbnails")
+                        .getJSONObject(0)
+                        .getString("url");
+            } else if (json.has("channelThumbnail")) {
+                channelUrl = json.getJSONObject("channelThumbnail")
+                        .getJSONArray("thumbnails")
+                        .getJSONObject(0)
+                        .optString("url");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        if (url != null) {
+            DownloadImageTask task = new DownloadImageTask(videoBitmaps, index, false);
+            task.setImageView(imageView);
+            task.execute(url);
+            videoTasks[index] = task;
+        }
+
+        if (channelUrl != null) {
+            DownloadImageTask task = new DownloadImageTask(channelBitmaps, index, true);
+            task.setImageView(iconView);
+            task.execute(channelUrl);
+            channelTasks[index] = task;
+        }
+
+    }
+
     public void refresh(final JSONArray result) {
         if (result == null) return;
         clear();
@@ -286,37 +360,6 @@ public class ResultAdapter extends ArrayAdapter<JSONObject> {
             JSONObject json = result.optJSONObject(i);
             if (json == null) continue;
             insert(json, getCount());
-            String url = null;
-            try {
-                JSONArray thumbnails = json.getJSONObject("thumbnail")
-                        .getJSONArray("thumbnails");
-                JSONObject thumbnail = thumbnails.getJSONObject(thumbnails.length() - 1);
-                url = thumbnail.getString("url");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            String channelUrl = null;
-            try {
-                channelUrl = json.getJSONObject("channelThumbnailSupportedRenderers")
-                        .getJSONObject("channelThumbnailWithLinkRenderer")
-                        .getJSONObject("thumbnail")
-                        .getJSONArray("thumbnails")
-                        .getJSONObject(0)
-                        .getString("url");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-            if (url != null) {
-                videoTasks[i] = new DownloadImageTask(videoBitmaps, i, false);
-                videoTasks[i].execute(url);
-            }
-
-            if (channelUrl != null) {
-                channelTasks[i] = new DownloadImageTask(channelBitmaps, i, true);
-                channelTasks[i].execute(channelUrl);
-            }
         }
 
         notifyDataSetChanged();

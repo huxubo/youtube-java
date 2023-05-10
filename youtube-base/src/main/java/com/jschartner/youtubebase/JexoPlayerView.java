@@ -28,7 +28,7 @@ public class JexoPlayerView extends StyledPlayerView {
         }
 
         ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) durationLayout.getLayoutParams();
-        params.horizontalBias = enable ? 0.02f : 0.08f;
+        params.horizontalBias = enable ? 0.02f : 0.04f;
         params.verticalBias = enable ? 0.90f : 0.86f;
         durationLayout.setLayoutParams(params);
     }

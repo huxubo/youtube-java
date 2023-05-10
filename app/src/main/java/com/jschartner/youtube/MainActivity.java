@@ -39,7 +39,6 @@ import js.Req;
  - TODOS:
  * Loading animation, when refreshing or loading Video
  * Finish Playerfragment, with title, description, view, download ...
- * Video-Title in Player
  * Reset Quality Settings every Video, display Quality Settings, Show remaining Time on Player
  * MAYBE LOGIN ??
  * MAYBE COMMENTS
@@ -59,6 +58,14 @@ public class MainActivity extends AppCompatActivity {
 
     protected Client client;
     protected List<String> remoteIps;
+
+    protected JSONObject currentVideo;
+
+    private Runnable onCurrentVideoChanged = null;
+
+    protected void setOnCurrentVideoChanged(final Runnable onCurrentVideoChanged) {
+        this.onCurrentVideoChanged = onCurrentVideoChanged;
+    }
 
     //BEGIN RADIO BUTTON
 
@@ -95,6 +102,7 @@ public class MainActivity extends AppCompatActivity {
         Utils.toast(this, concat(os));
     }
 
+    //TODO: publishedTimeText and viewCountText is in initialData[contents][results][results][contents]
     public void playVideo(@NonNull final String id) {
 
         if(client != null) {
@@ -126,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
 
                 jexoPlayer.setOnPlayerError((error) -> {
                     toast("fetching Youtube again ...");
-                    //playVideo(id);
+                    playVideo(id);
                 });
                 jexoPlayer.playFirst(new Iterator<String>() {
                     int state = 0;
@@ -162,6 +170,49 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 }, Youtube.toMediaItem(id, info));
+
+                final JSONObject initialData = Youtube.getInitialDataFromResponse(response);
+
+                try{
+                    JSONObject videoRenderer = initialData.getJSONObject("contents")
+                            .getJSONObject("twoColumnWatchNextResults")
+                            .getJSONObject("results")
+                            .getJSONObject("results")
+                            .getJSONArray("contents")
+                            .getJSONObject(0)
+                            .getJSONObject("videoPrimaryInfoRenderer");
+
+                    String publishedTimeText = null;
+                    if(videoRenderer.has("relativeDateText")) {
+                        JSONObject relativeDateText = videoRenderer.getJSONObject("relativeDateText");
+                        publishedTimeText = relativeDateText.optString("simpleText");
+                    }
+
+                    String viewCountText = null;
+                    if(videoRenderer.has("viewCount")) {
+                        JSONObject viewCount = videoRenderer.optJSONObject("viewCount");
+                        if(viewCount.has("videoViewCountRenderer")) {
+                            JSONObject videoViewCountRenderer = viewCount.optJSONObject("videoViewCountRenderer");
+                            if(videoViewCountRenderer.has("viewCount")) {
+                                JSONObject viewCountInner = videoViewCountRenderer.optJSONObject("viewCount");
+                                viewCountText = viewCountInner.optString("simpleText");
+                            }
+                        }
+                    }
+
+                    info.put("publishedTimeText", publishedTimeText);
+                    info.put("viewCountText", viewCountText);
+                }
+                catch(final JSONException e) {
+                    e.printStackTrace();
+                }
+
+
+                currentVideo = info;
+                if(onCurrentVideoChanged != null) {
+                    onCurrentVideoChanged.run();
+                }
+
             }, () -> toast("Failed to fetch Formats"));
 
             final JSONObject initialData = Youtube.getInitialDataFromResponse(response);
@@ -170,12 +221,14 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            final JSONArray recommendations = Youtube.getRecommendedVideosFromInitialData(initialData);
-            if (recommendations == null) {
-                toast("Failed to parse the recommendedVideos");
-                return;
-            }
-            recommendationAdapter.refresh(recommendations);
+            jexoPlayer.setOnFirstFrameRendered(() -> {
+                final JSONArray recommendations = Youtube.getRecommendedVideosFromInitialData(initialData);
+                if (recommendations == null) {
+                    toast("Failed to parse the recommendedVideos");
+                    return;
+                }
+                recommendationAdapter.refresh(recommendations);
+            });
 
             final String nextVideoId = Youtube.getNextVideoIdFromInitialData(initialData);
             if (nextVideoId != null) {
@@ -367,6 +420,7 @@ public class MainActivity extends AppCompatActivity {
         if (jexoPlayer.isConnected()) {
             jexoPlayer.disconnect();
         }
+        jexoPlayer.stop();
         Youtube.close();
         super.onDestroy();
     }

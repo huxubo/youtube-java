@@ -457,11 +457,16 @@ public class StartFragment extends Fragment {
 
         resultAdapter.setOnContentClicked((v, position) -> {
             //ACTION
-            final String videoId = resultAdapter.getItem(position).optString("videoId");
+            final JSONObject result = resultAdapter.getItem(position);
+            final String videoId = result.optString("videoId");
             getMainActivity().playVideo(videoId);
 
             //NAVIGATE
-            if(getMainActivity().client == null)Navigation.findNavController(view).navigate(R.id.playerFragment);
+            if(getMainActivity().client != null) {
+                return;
+            }
+
+            Navigation.findNavController(view).navigate(R.id.playerFragment);
         });
 
         resultAdapter.setOnItemLongClickListener((v, position) -> {

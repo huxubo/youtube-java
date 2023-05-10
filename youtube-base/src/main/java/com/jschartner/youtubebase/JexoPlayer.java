@@ -203,6 +203,12 @@ public class JexoPlayer extends BroadcastReceiver {
         }
     }
 
+    private Runnable onFirstFrameRendered;
+
+    public void setOnFirstFrameRendered(final Runnable onFirstFrameRendered) {
+        this.onFirstFrameRendered = onFirstFrameRendered;
+    }
+
     private static synchronized DatabaseProvider getDatabaseProvider(Context context) {
         if (databaseProvider == null) {
             databaseProvider = new StandaloneDatabaseProvider(context);
@@ -298,6 +304,15 @@ public class JexoPlayer extends BroadcastReceiver {
             @SuppressLint("RestrictedApi")
             @Override
             public void onEvents(Player player, Player.Events events) {
+
+                for(int i=0;i<events.size();i++) {
+                    int event = events.get(i);
+                    if(event == Player.EVENT_RENDERED_FIRST_FRAME && onFirstFrameRendered != null) {
+                        onFirstFrameRendered.run();
+                        onFirstFrameRendered = null;
+                    }
+                }
+
                 Player.Listener.super.onEvents(player, events);
                 if (notification != null && notificationIntent != null) {
                     NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
@@ -483,7 +498,7 @@ public class JexoPlayer extends BroadcastReceiver {
             DashManifest manifest = (new DashManifestParser()).parse(Uri.parse(""), new ByteArrayInputStream(dashString.getBytes()));
             source = getDashMediaSourceFactory().createMediaSource(manifest);
         } catch (Exception e) {
-            e.printStackTrace();
+            //e.printStackTrace();
             return false;
         }
 

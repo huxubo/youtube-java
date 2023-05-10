@@ -515,6 +515,16 @@ public class Youtube {
             return;
         }
 
+        try{
+            final JSONObject microFormat = initialPlayerResponse.getJSONObject("microformat");
+            final JSONObject playerMicroFormatRenderer = microFormat.getJSONObject("playerMicroformatRenderer");
+
+            videoDetails.put("publishDate", playerMicroFormatRenderer.optString("publishDate"));
+        } catch(final JSONException e) {
+            e.printStackTrace();
+        }
+
+
         final Pair<JSONArray, Boolean> _formats = getFormatsFromInitialPlayerResponse(streamingData);
         if (_formats == null) {
             onError.run();
